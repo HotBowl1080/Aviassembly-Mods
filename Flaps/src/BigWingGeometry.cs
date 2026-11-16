@@ -20,7 +20,7 @@ internal sealed class BigWingGeometry
     internal readonly List<int>[] triangles = { new List<int>(), new List<int>() };
     readonly List<int>[] moving = new List<int>[10];
     internal readonly Vector3[] origin=new Vector3[2], axis=new Vector3[2];
-    Quaternion pitch;
+    Quaternion pitch,vanePitch;
     Vector3 travel;
     readonly Vector3[] pin=new Vector3[3], socket=new Vector3[3];
     readonly List<Vector3>[] rings={new List<Vector3>(),new List<Vector3>(),new List<Vector3>()};
@@ -31,10 +31,13 @@ internal sealed class BigWingGeometry
         internal float across;
     }
     readonly List<BridgeVertex> flapBridge=new List<BridgeVertex>();
+    readonly List<BridgeVertex> vaneBridge=new List<BridgeVertex>();
+    readonly Vector3[][] vaneCoverEnds=new Vector3[2][];
     readonly Vector2 edgeUV;
     static readonly int[,] ends={{122,125,127,129},{124,123,126,128},{136,134,130,131},{137,135,133,132}};
     static readonly Vector3 aft=Vector3.left;
-    const float VaneChord=.090f;
+    const float VaneChord=.140f;
+    const float VaneForward=.205f;
     static readonly Vector3 vanePinOffset=Vector3.left*.014f+Vector3.down*.080f;
     internal readonly Vector3[] positions,normals;
     readonly WingDevices devices;
@@ -94,15 +97,20 @@ internal sealed class BigWingGeometry
     {
         Vector3[] inner={p[137],p[135],p[133],p[132]};
         Vector3[] outer={p[122],p[125],p[127],p[129]};
-        for(int span=0;span<8;span++)for(int side=0;side<4;side++)
+        BuildBridge(inner,outer,flapBridge);
+        BuildBridge(vaneCoverEnds[1],vaneCoverEnds[0],vaneBridge);
+    }
+    void BuildBridge(Vector3[] inner,Vector3[] outer,List<BridgeVertex> bridge)
+    {
+        for(int span=0;span<8;span++)for(int side=0;side<inner.Length;side++)
         {
-            int next=(side+1)%4;
+            int next=(side+1)%inner.Length;
             float a=span/8f,b=(span+1)/8f;
-            BridgeFace(inner,outer,side,a,next,b,side,b);
-            BridgeFace(inner,outer,side,a,next,a,next,b);
+            BridgeFace(inner,outer,side,a,next,b,side,b,bridge);
+            BridgeFace(inner,outer,side,a,next,a,next,b,bridge);
         }
     }
-    void BridgeFace(Vector3[] inner,Vector3[] outer,int sideA,float spanA,int sideB,float spanB,int sideC,float spanC)
+    void BridgeFace(Vector3[] inner,Vector3[] outer,int sideA,float spanA,int sideB,float spanB,int sideC,float spanC,List<BridgeVertex> bridge)
     {
         Vector3 a=BridgeRest(inner[sideA],outer[sideA],spanA);
         Vector3 b=BridgeRest(inner[sideB],outer[sideB],spanB);
@@ -113,12 +121,12 @@ internal sealed class BigWingGeometry
             int side=(int)pair.x;
             int id=Add(new Vertex(BridgeRest(inner[side],outer[side],pair.y),normal,edgeUV),-1);
             triangles[1].Add(id);
-            flapBridge.Add(new BridgeVertex{id=id,inner=inner[side],outer=outer[side],across=pair.y});
+            bridge.Add(new BridgeVertex{id=id,inner=inner[side],outer=outer[side],across=pair.y});
         }
     }
     static Vector3 BridgeRest(Vector3 inner,Vector3 outer,float across)
     {
-        return Vector3.Lerp(inner,outer,across)+Vector3.down*(.012f*(float)Math.Sin(across*Math.PI));
+        return Vector3.Lerp(inner,outer,across)+Vector3.down*(.004f*(float)Math.Sin(across*Math.PI));
     }
     void Clip(Vertex[] face,float cut,bool rear,int track,int group)
     {
@@ -198,17 +206,19 @@ internal sealed class BigWingGeometry
         float[] height={0f,.007f,.012f,.009f,.0015f,-.005f,-.008f,-.005f};
         Vector3[,] profile=new Vector3[2,chord.Length];
         int group=8+flap;
-        float first=p[ends[2*flap,0]].z+.075f;
-        float last=p[ends[2*flap+1,0]].z-.075f;
+        float first=p[ends[2*flap,0]].z+(flap==0?0f:.035f);
+        float last=p[ends[2*flap+1,0]].z-(flap==0?.035f:0f);
         for(int side=0;side<2;side++) {
-            Vector3 nose=HingeAt(flap,side==0 ? first : last)-aft*.180f+Vector3.down*.045f;
+            Vector3 nose=HingeAt(flap,side==0 ? first : last)-aft*VaneForward+Vector3.down*.045f;
             for(int k=0;k<chord.Length;k++)
                 profile[side,k]=nose+aft*(chord[k]*VaneChord)+Vector3.up*height[k];
             Vector3 center=nose+aft*(VaneChord*.43f);
             for(int k=0;k<chord.Length;k++)
                 Face(center,profile[side,k],profile[side,(k+1)%chord.Length],side==0 ? Vector3.back : Vector3.forward,group);
         }
-        Vector3 sectionCenter=HingeAt(flap,first)+aft*(-.180f+VaneChord*.43f)+Vector3.down*.045f;
+        vaneCoverEnds[flap]=new Vector3[chord.Length];
+        for(int k=0;k<chord.Length;k++)vaneCoverEnds[flap][k]=profile[flap==0?0:1,k];
+        Vector3 sectionCenter=HingeAt(flap,first)+aft*(-VaneForward+VaneChord*.43f)+Vector3.down*.045f;
         for(int k=0;k<chord.Length;k++) {
             int next=(k+1)%chord.Length;
             Vector3 outward=(profile[0,k]+profile[0,next])*.5f-sectionCenter;
@@ -271,6 +281,26 @@ internal sealed class BigWingGeometry
         Vector3 hinge=HingeAt(flap,point.z);
         return hinge+travel+pitch*(point-hinge);
     }
+    Vector3 TransformVanePoint(int flap,Vector3 point)
+    {
+        Vector3 pinRest=HingeAt(flap,point.z)+vanePinOffset;
+        return TransformPoint(flap,pinRest)+vanePitch*(point-pinRest);
+    }
+    void PoseBridge(List<BridgeVertex> bridge,bool vane)
+    {
+        foreach(BridgeVertex vertex in bridge)
+        {
+            Vector3 inner=vane?TransformVanePoint(1,vertex.inner):TransformPoint(1,vertex.inner);
+            Vector3 outer=vane?TransformVanePoint(0,vertex.outer):TransformPoint(0,vertex.outer);
+            positions[vertex.id]=BridgeRest(inner,outer,vertex.across);
+        }
+        for(int i=0;i<bridge.Count;i+=3)
+        {
+            int a=bridge[i].id,b=bridge[i+1].id,c=bridge[i+2].id;
+            Vector3 normal=Vector3.Cross(positions[b]-positions[a],positions[c]-positions[a]).normalized;
+            normals[a]=normals[b]=normals[c]=normal;
+        }
+    }
     internal void Pose(float degrees,Vector3 down)
     {
         Pose(degrees,down,0f);
@@ -284,7 +314,7 @@ internal sealed class BigWingGeometry
         Vector3 sectionDown=new Vector3(down.x,down.y,0f).normalized;
         float tStage=degrees/30f;
         travel=aft*(.22f*tStage*(1.22f-.22f*tStage))+sectionDown*(.072f*tStage*(.75f+.25f*tStage));
-        Quaternion vanePitch=AxisAngle(Vector3.forward,sign*degrees*.45f);
+        vanePitch=AxisAngle(Vector3.forward,sign*degrees*.45f);
         for(int f=0;f<2;f++)
         {
             Vector3 slope=axis[f]/axis[f].z;
@@ -302,8 +332,7 @@ internal sealed class BigWingGeometry
             foreach(int i in moving[8+f])
             {
                 Vertex rest=vertices[i];
-                Vector3 pinRest=HingeAt(f,rest.p.z)+vanePinOffset;
-                positions[i]=TransformPoint(f,pinRest)+vanePitch*(rest.p-pinRest);
+                positions[i]=TransformVanePoint(f,rest.p);
                 Vector3 normal=vanePitch*rest.n;
                 normal.z-=normal.x*vaneSpanCorrection.x+normal.y*vaneSpanCorrection.y;
                 normals[i]=normal.normalized;
@@ -326,11 +355,8 @@ internal sealed class BigWingGeometry
             Quaternion q=new Quaternion(cross.x*inv,cross.y*inv,cross.z*inv,w*inv);
             foreach(int i in moving[t+2]) { positions[i]=pin[t]+q*(vertices[i].p-pin[t]); normals[i]=q*vertices[i].n; }
         }
-        foreach(BridgeVertex vertex in flapBridge)
-        {
-            positions[vertex.id]=BridgeRest(TransformPoint(1,vertex.inner),TransformPoint(0,vertex.outer),vertex.across);
-            normals[vertex.id]=pitch*vertices[vertex.id].n;
-        }
+        PoseBridge(flapBridge,false);
+        PoseBridge(vaneBridge,true);
         devices.Pose(degrees,spoilers,down);
     }
 }

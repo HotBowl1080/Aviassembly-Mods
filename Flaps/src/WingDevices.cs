@@ -16,16 +16,18 @@ internal sealed class WingDevices
 {
     // Short facets keep the game's low-poly style; shared normals round the lighting.
     static readonly double[] NoseAngles={0.0,30.0,60.0,90.0,120.0,150.0,180.0};
-    const int SlatFaces=4;
-    const float KruegerChord=.16f;
+    const int SlatFaces=3;
+    const float KruegerChord=.12f;
     sealed class Device
     {
         internal float first,last,cutFirst,cutLast,frontFirst,frontLast,lowerFirst,lowerLast;
-        internal bool spoiler,leadingFlap,fixedNose;
+        internal bool spoiler,leadingFlap,fixedNose,rootNose;
         internal float hingeYFirst,hingeYLast;
         internal readonly List<int> indices=new List<int>();
         internal readonly Dictionary<float,Vector3> hingeSections=new Dictionary<float,Vector3>();
         internal readonly Dictionary<float,Vector3> slopeSections=new Dictionary<float,Vector3>();
+        internal readonly Dictionary<int,Vector3> openPositions=new Dictionary<int,Vector3>();
+        internal readonly Dictionary<int,Vector3> openNormals=new Dictionary<int,Vector3>();
         internal float Cut(float z) { return Lerp(cutFirst,cutLast,z); }
         internal float Front(float z) { return Lerp(frontFirst,frontLast,z); }
         internal float Lower(float z) { return Lerp(lowerFirst,lowerLast,z); }
@@ -65,7 +67,8 @@ internal sealed class WingDevices
         AddFixedNose(-3.70f,-3.65f);
         AddFixedNose(-2.525f,-2.517f);
         AddFixedNose(-1.16f,-1.152f);
-        AddFixedNose(.20f,1.68f);
+        AddFixedNose(.20f,1.7210f);
+        fixedNoses[fixedNoses.Count-1].rootNose=true;
         var cuts=new List<Device>(devices);
         cuts.AddRange(fixedNoses);
         for(int sub=0;sub<2;sub++)
@@ -124,7 +127,7 @@ internal sealed class WingDevices
     static float Signed(Vector3 p,Device d,int plane)
     {
         if(plane==0)return p.z-d.first;
-        if(plane==1)return d.last-p.z;
+        if(plane==1)return (d.rootNose?1.73f:d.last)-p.z;
         if(plane==2)return p.x-d.Cut(p.z);
         if(plane==3)return d.leadingFlap?d.Lower(p.z)-p.y:d.Front(p.z)-p.x;
         return p.y-d.Lower(p.z);
@@ -231,7 +234,7 @@ internal sealed class WingDevices
         Vector3 n=Vector3.Cross(b-a,c-a);
         if(n.sqrMagnitude<1e-14f)return;
         if(Vector3.Dot(n,outward)<0){Vector3 tmp=b;b=c;c=tmp;n=-n;}
-        n=n.normalized;
+        n=Unit(n);
         Vector2 uv=mesh.vertices[122].uv;
         Emit(new List<BigWingGeometry.Vertex>{
             new BigWingGeometry.Vertex(a,n,uv),new BigWingGeometry.Vertex(b,n,uv),new BigWingGeometry.Vertex(c,n,uv)},material,owner);
@@ -267,7 +270,7 @@ internal sealed class WingDevices
     void BuildKrueger(Device d)
     {
         d.indices.Clear();
-        const int stations=7,points=11;
+        const int stations=7,points=13;
         var outer=new Vector3[stations,points];
         var inner=new Vector3[stations,points];
         float[] hingeX=new float[stations],hingeY=new float[stations];
@@ -283,8 +286,8 @@ internal sealed class WingDevices
             for(int k=0;k<points;k++)
             {
                 float t=k/(float)(points-1);
-                // Broad, thin underside panel. Its last third rolls forward as
-                // the hinge opens, rather than leaving a straight hanging door.
+                // Closed underside door. Its open shape is a short drooped
+                // panel with a returning bullnose, not another slat strip.
                 outer[s,k]=new Vector3(x-KruegerChord*t,StowedBottom(x-KruegerChord*t,z)+.014f,z);
                 inner[s,k]=outer[s,k]+Vector3.up*.003f;
             }
@@ -321,6 +324,44 @@ internal sealed class WingDevices
             d.slopeSections.Add(z,(Hinge(d,z1)-Hinge(d,z0))/(z1-z0));
             d.hingeSections.Add(z,Hinge(d,z));
         }
+        // Cache the deployed profile and its inverse-transpose normals once.
+        // Deploying then only blends cached geometry during the folding motion.
+        const float step=.0001f;
+        foreach(int id in d.indices)
+        {
+            var v=mesh.vertices[id];
+            Vector3 point=OpenKruegerPoint(d,v.p);
+            Vector3 dx=(OpenKruegerPoint(d,v.p+Vector3.right*step)-OpenKruegerPoint(d,v.p-Vector3.right*step))/(2f*step);
+            Vector3 dy=(OpenKruegerPoint(d,v.p+Vector3.up*step)-OpenKruegerPoint(d,v.p-Vector3.up*step))/(2f*step);
+            Vector3 dz=(OpenKruegerPoint(d,v.p+Vector3.forward*step)-OpenKruegerPoint(d,v.p-Vector3.forward*step))/(2f*step);
+            Vector3 normal=Vector3.Cross(dy,dz)*v.n.x+Vector3.Cross(dz,dx)*v.n.y+Vector3.Cross(dx,dy)*v.n.z;
+            if(Vector3.Dot(dx,Vector3.Cross(dy,dz))<0f)normal=-normal;
+            d.openPositions.Add(id,point);d.openNormals.Add(id,normal.normalized);
+        }
+    }
+    // Forward/down panel followed by a compact curled lip. The last part
+    // returns toward the wing instead of projecting as a flat shelf.
+    static Vector2 KruegerProfile(float t,out Vector2 tangent)
+    {
+        if(t<=.60f)
+        {
+            tangent=new Vector2(.057f,-.063f)/.60f;
+            return tangent*t;
+        }
+        float angle=(-48f+195f*(t-.60f)/.40f)*(float)Math.PI/180f;
+        float start=-48f*(float)Math.PI/180f,radius=.022f;
+        tangent=new Vector2((float)Math.Cos(angle),(float)Math.Sin(angle))*(radius*195f/.40f*(float)Math.PI/180f);
+        return new Vector2(.057f+radius*((float)Math.Sin(angle)-(float)Math.Sin(start)),
+            -.063f+radius*((float)Math.Cos(start)-(float)Math.Cos(angle)));
+    }
+    Vector3 OpenKruegerPoint(Device d,Vector3 p)
+    {
+        Vector3 hinge=Hinge(d,p.z);
+        float t=(hinge.x-p.x)/KruegerChord;
+        Vector2 tangent,profile=KruegerProfile(t,out tangent);
+        Vector2 normal=new Vector2(-tangent.y,tangent.x).normalized;
+        float thickness=p.y-(StowedBottom(p.x,p.z)+.014f);
+        return hinge+new Vector3(profile.x-normal.x*thickness,profile.y-normal.y*thickness,0f);
     }
     float StowedBottom(float x,float z)
     {
@@ -348,10 +389,55 @@ internal sealed class WingDevices
         return result;
     }
 
+    List<float> LeadingStations(Device d)
+    {
+        var candidates=new List<float>{d.first,d.last};
+        for(int s=1;s<4;s++)candidates.Add(Mathf.Lerp(d.first,d.last,s/4f));
+        // Retain every stock skin break along the cut. Uniform stations miss
+        // the root's lower-surface bends and leave openings between the loft
+        // and the retained wing. Include cut/triangle-edge crossings as well.
+        for(int t=0;t<surface.Length;t+=3)for(int e=0;e<3;e++)
+        {
+            Vector3 a=shell[surface[t+e]],b=shell[surface[t+(e+1)%3]];
+            if(a.z>d.first && a.z<d.last)candidates.Add(a.z);
+            float da=a.x-d.Cut(a.z),db=b.x-d.Cut(b.z);
+            if((da>0f)==(db>0f)||Math.Abs(da-db)<1e-8f)continue;
+            float z=Mathf.LerpUnclamped(a.z,b.z,da/(da-db));
+            if(z>d.first && z<d.last)candidates.Add(z);
+        }
+        candidates.Sort();var stations=new List<float>();
+        foreach(float z in candidates)
+            if(stations.Count==0||z-stations[stations.Count-1]>.000001f)stations.Add(z);
+        if(stations[stations.Count-1]!=d.last)stations[stations.Count-1]=d.last;
+        return stations;
+    }
+    Vector3 LeadingPoint(Device d,float z,double theta,float inset)
+    {
+        float x=d.Cut(z),rear,front;Section(z,out rear,out front);
+        float top=Surface(x,z,true),bottom=Surface(x,z,false);
+        return new Vector3(x+Math.Max(front-x-inset,.008f)*(float)Math.Sin(theta),
+            (top+bottom)*.5f+(top-bottom)*.5f*(float)Math.Cos(theta),z);
+    }
+    Vector3 RootEndPoint(Device d,Vector3 point,double theta,float inset)
+    {
+        // The stock root cap is slightly tilted. Continue the last linear
+        // section onto that plane, including its actual top/bottom cut edges.
+        Vector3 normal=Vector3.Cross(shell[118]-shell[116],shell[119]-shell[116]);
+        Vector3 previous=LeadingPoint(d,d.last-.001f,theta,inset);
+        Vector3 along=(point-previous)/.001f;
+        return point+along*(Vector3.Dot(normal,shell[116]-point)/Vector3.Dot(normal,along));
+    }
+    Vector3 OnRootPlane(Vector3 point)
+    {
+        Vector3 normal=Vector3.Cross(shell[118]-shell[116],shell[119]-shell[116]);
+        point.z+=(Vector3.Dot(normal,shell[116]-point)/normal.z);
+        return point;
+    }
+
     void CloseLeadingSkin(Device d)
     {
         d.indices.Clear();
-        const int stations=5;
+        var levels=LeadingStations(d);int stations=levels.Count;
         double[] angles=NoseAngles;
         var outer=new Vector3[stations,SlatFaces+1];
         var inner=new Vector3[stations,SlatFaces+1];
@@ -361,7 +447,7 @@ internal sealed class WingDevices
         var fixedInner=new Vector3[stations,angles.Length-SlatFaces];
         for(int s=0;s<stations;s++)
         {
-            float z=Mathf.Lerp(d.first,d.last,s/(float)(stations-1));
+            float z=levels[s];
             float x=d.Cut(z),rear,front;Section(z,out rear,out front);
             float top=Surface(x,z,true),bottom=Surface(x,z,false);
             float cy=(top+bottom)*.5f,height=(top-bottom)*.5f,depth=front-x;
@@ -371,18 +457,26 @@ internal sealed class WingDevices
                 float sin=(float)Math.Sin(theta),cos=(float)Math.Cos(theta);
                 Vector3 normal=new Vector3(sin/Math.Max(depth,.001f),cos/Math.Max(height,.001f),0f).normalized;
                 Vector3 skinPoint=new Vector3(x+depth*sin,cy+height*cos,z);
+                Vector3 corePoint=new Vector3(x+Math.Max(depth-.012f,.008f)*sin,cy+height*cos,z);
+                if(d.rootNose && s==stations-1)
+                {
+                    skinPoint=RootEndPoint(d,skinPoint,theta,0f);
+                    corePoint=RootEndPoint(d,corePoint,theta,.012f);
+                }
+                Vector3 innerPoint=skinPoint-normal*.003f;
+                if(d.rootNose && s==stations-1)innerPoint=OnRootPlane(innerPoint);
                 shadingSkin[s,k]=skinPoint;
                 if(k<=SlatFaces)
                 {
                     outer[s,k]=skinPoint;
-                    inner[s,k]=skinPoint-normal*.003f;
+                    inner[s,k]=innerPoint;
                 }
                 if(k>=SlatFaces)
                 {
                     fixedSkin[s,k-SlatFaces]=skinPoint;
-                    fixedInner[s,k-SlatFaces]=skinPoint-normal*.003f;
+                    fixedInner[s,k-SlatFaces]=innerPoint;
                 }
-                core[s,k]=new Vector3(x+Math.Max(depth-.012f,.008f)*sin,cy+height*cos,z);
+                core[s,k]=corePoint;
             }
         }
         // The upper nose and forward wrap move together; the underside and
@@ -397,9 +491,15 @@ internal sealed class WingDevices
         for(int side=0;side<2;side++)
         {
             int s=side==0?0:stations-1;
-            Vector3 center=(core[s,0]+core[s,angles.Length-1])*.5f;
+            // Fixed collars need a solid outer cap, not only the inset core.
+            // That closes the annular opening at the wing root and slat ends.
+            var cap=d.fixedNose?shadingSkin:core;
+            Vector3 center=(cap[s,0]+cap[s,angles.Length-1])*.5f;
+            Vector3 outward=side==0?Vector3.back:Vector3.forward;
+            if(d.rootNose && side==1)outward=Vector3.Cross(shell[118]-shell[116],shell[119]-shell[116]);
+            if(outward.z<0f && side==1)outward=-outward;
             for(int k=0;k<angles.Length-1;k++)
-                Face(center,core[s,k],core[s,k+1],side==0?Vector3.back:Vector3.forward,null,0);
+                Face(center,cap[s,k],cap[s,k+1],outward,null,d.fixedNose?1:0);
         }
         for(int s=0;s<stations-1;s++)
             Quad(core[s,0],core[s,angles.Length-1],core[s+1,angles.Length-1],core[s+1,0],Vector3.left,null,0);
@@ -412,7 +512,15 @@ internal sealed class WingDevices
         Vector3 curve=grid[s,Math.Min(k+1,lastCurve)]-grid[s,Math.Max(k-1,0)];
         if(lastCurve>=2 && k==0)curve=(grid[s,1]-grid[s,0])*2f-(grid[s,2]-grid[s,0])*.5f;
         if(lastCurve>=2 && k==lastCurve)curve=(grid[s,lastCurve]-grid[s,lastCurve-1])*2f-(grid[s,lastCurve]-grid[s,lastCurve-2])*.5f;
-        return Vector3.Cross(span,curve).normalized;
+        // Some stock seams are only micrometres apart. Normalize the tangent
+        // directions before crossing so Unity's small-vector cutoff cannot
+        // turn their perfectly valid shading normals into zero vectors.
+        return Unit(Vector3.Cross(Unit(span),Unit(curve)));
+    }
+    static Vector3 Unit(Vector3 value)
+    {
+        float length=(float)Math.Sqrt((double)value.x*value.x+(double)value.y*value.y+(double)value.z*value.z);
+        return length>1e-20f?value/length:Vector3.up;
     }
     void SmoothQuad(Vector3[,] grid,int s,int k,Device owner,int material,bool reverse,Vector3[,] reference=null,int offset=0)
     {
@@ -468,7 +576,7 @@ internal sealed class WingDevices
             float fraction=d.spoiler?spoilers:d.leadingFlap?
                 BigWingPreset.LeadingEdgeExtension(flapAngle):BigWingPreset.SlatExtension(flapAngle);
             float direction=down.y<0f?-1f:1f;
-            float angle=(d.spoiler?55f:d.leadingFlap?-125f:12f)*fraction*direction;
+            float angle=(d.spoiler?55f:d.leadingFlap?-110f:12f)*fraction*direction;
             // Section-wise transforms preserve span position on swept wings.
             Quaternion rotation=Rotation(Vector3.forward,angle);
             Vector3 slope=Hinge(d,d.last)-Hinge(d,d.first);slope/=(d.last-d.first);
@@ -483,20 +591,20 @@ internal sealed class WingDevices
                     slope=d.slopeSections[v.p.z];
                     correction=slope-rotation*slope;
                 }
-                Vector3 local=v.p-hinge,n=v.n;
+                Vector3 local=v.p-hinge,n=rotation*v.n;
+                mesh.positions[i]=hinge+travel+rotation*local;
+                n.z-=n.x*correction.x+n.y*correction.y;
+                n=n.normalized;
                 if(d.leadingFlap)
                 {
-                    float lip=Mathf.Clamp01((-local.x/KruegerChord-.70f)/.30f);
-                    local.y+=direction*.045f*fraction*lip*lip;
-                    // Inverse-transpose of the lip bend keeps its lighting
-                    // continuous through the roll and across swept sections.
-                    float shear=-direction*.09f*fraction*lip/(KruegerChord*.30f);
-                    n.x-=shear*v.n.y;n.z+=shear*slope.x*v.n.y;
+                    Vector3 target=d.openPositions[i],targetNormal=d.openNormals[i];
+                    if(direction>0f){target.y=2f*hinge.y-target.y;targetNormal.y=-targetNormal.y;}
+                    Quaternion fullyOpen=Rotation(Vector3.forward,-110f*direction);
+                    float roll=fraction*fraction*(3f-2f*fraction);
+                    mesh.positions[i]+=(target-(hinge+fullyOpen*local))*roll;
+                    n=Vector3.LerpUnclamped(n,targetNormal,roll).normalized;
                 }
-                mesh.positions[i]=hinge+travel+rotation*local;
-                n=rotation*n;
-                n.z-=n.x*correction.x+n.y*correction.y;
-                mesh.normals[i]=n.normalized;
+                mesh.normals[i]=n;
             }
         }
         // Stowed devices already meet exactly along the original shell. Internal
