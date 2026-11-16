@@ -7,7 +7,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-[BepInPlugin("com.andrewstack.aviassembly.flaps", "Aviassembly Flaps", "0.9.0")]
+[BepInPlugin("com.andrewstack.aviassembly.flaps", "Aviassembly Flaps", "0.9.1")]
 public class FlapsPlugin : BaseUnityPlugin
 {
     internal static int stage { get; private set; }
@@ -83,6 +83,7 @@ public class FlapMarker : MonoBehaviour
             if(original.subMeshCount!=2) return;
             var shape=new BigWingGeometry(original.vertices, original.normals, original.uv,
                 original.GetTriangles(0),original.GetTriangles(1));
+            shape.Pose(0f,Vector3.down,0f);
             var tex=new Vector2[shape.vertices.Count];
             for(int i=0;i<tex.Length;i++) tex[i]=shape.vertices[i].uv;
             deployed=new Mesh();
@@ -97,6 +98,7 @@ public class FlapMarker : MonoBehaviour
             bounds.Expand(.9f);
             deployed.bounds=bounds;
             geometry=shape;
+            filter.sharedMesh=deployed;
             owner=GetComponentInParent<PlaneContainer>();
             FlapsPlugin.activePlane=owner;
             FlapsPlugin.fittedWings.Add(this);
@@ -111,8 +113,8 @@ public class FlapMarker : MonoBehaviour
         if(next==angle && nextSpoiler==spoilerFraction) return;
         angle=next;
         spoilerFraction=nextSpoiler;
-        if(angle==0f && spoilerFraction==0f) { filter.sharedMesh=original; return; }
-        geometry.Pose(angle, transform.InverseTransformVector(-wing.rb.transform.up).normalized,spoilerFraction);
+        Vector3 localDown=flying?transform.InverseTransformVector(-wing.rb.transform.up).normalized:Vector3.down;
+        geometry.Pose(angle,localDown,spoilerFraction);
         deployed.vertices=geometry.positions;
         deployed.normals=geometry.normals;
         if(filter.sharedMesh!=deployed) filter.sharedMesh=deployed;
