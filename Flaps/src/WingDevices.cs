@@ -17,7 +17,7 @@ internal sealed class WingDevices
     // Short facets keep the game's low-poly style; shared normals round the lighting.
     static readonly double[] NoseAngles={0.0,30.0,60.0,90.0,120.0,150.0,180.0};
     const int SlatFaces=3;
-    const float KruegerChord=.12f;
+    const float KruegerChord=.22f;
     sealed class Device
     {
         internal float first,last,cutFirst,cutLast,frontFirst,frontLast,lowerFirst,lowerLast;
@@ -56,18 +56,19 @@ internal sealed class WingDevices
         }
         surface=completeSurface.ToArray();
         StockVertexCount=mesh.vertices.Count;
-        AddLeading(-3.65f,-2.525f,false);
-        AddLeading(-2.517f,-1.16f,false);
-        AddLeading(-1.152f,.20f,false);
-        AddLeading(.22f,1.46f,true);
+        AddLeading(-3.65f,-2.55f,false);
+        AddLeading(-2.50f,-1.185f,false);
+        AddLeading(-1.135f,.17f,false);
+        AddLeading(.22f,.81f,true);
+        AddLeading(.835f,1.40f,true);
         AddSpoiler(-1.66f,-.43f);
         AddSpoiler(.20f,1.13f);
         // The stock tip starts bending upward at about -3.70. Never replace it
         // with a straight spanwise nose loft: that slices through the winglet.
         AddFixedNose(-3.70f,-3.65f);
-        AddFixedNose(-2.525f,-2.517f);
-        AddFixedNose(-1.16f,-1.152f);
-        AddFixedNose(.20f,1.7210f);
+        AddFixedNose(-2.55f,-2.50f);
+        AddFixedNose(-1.185f,-1.135f);
+        AddFixedNose(.17f,1.7210f);
         fixedNoses[fixedNoses.Count-1].rootNose=true;
         var cuts=new List<Device>(devices);
         cuts.AddRange(fixedNoses);
@@ -276,7 +277,7 @@ internal sealed class WingDevices
         float[] hingeX=new float[stations],hingeY=new float[stations];
         float rearA,frontA,rearB,frontB;
         Section(d.first,out rearA,out frontA);Section(d.last,out rearB,out frontB);
-        d.frontFirst=frontA-.055f;d.frontLast=frontB-.055f;
+        d.frontFirst=frontA-.09f;d.frontLast=frontB-.09f;
         for(int s=0;s<stations;s++)
         {
             float z=Mathf.Lerp(d.first,d.last,s/(float)(stations-1));
@@ -339,20 +340,13 @@ internal sealed class WingDevices
             d.openPositions.Add(id,point);d.openNormals.Add(id,normal.normalized);
         }
     }
-    // Forward/down panel followed by a compact curled lip. The last part
-    // returns toward the wing instead of projecting as a flat shelf.
+    // A broad Krueger scoop, with one continuous bowed face. The end
+    // rises gently into its rolled edge instead of curling into a hook.
     static Vector2 KruegerProfile(float t,out Vector2 tangent)
     {
-        if(t<=.60f)
-        {
-            tangent=new Vector2(.057f,-.063f)/.60f;
-            return tangent*t;
-        }
-        float angle=(-48f+195f*(t-.60f)/.40f)*(float)Math.PI/180f;
-        float start=-48f*(float)Math.PI/180f,radius=.022f;
-        tangent=new Vector2((float)Math.Cos(angle),(float)Math.Sin(angle))*(radius*195f/.40f*(float)Math.PI/180f);
-        return new Vector2(.057f+radius*((float)Math.Sin(angle)-(float)Math.Sin(start)),
-            -.063f+radius*((float)Math.Cos(start)-(float)Math.Cos(angle)));
+        Vector2 control=new Vector2(.105f,-.200f),end=new Vector2(.225f,-.040f);
+        tangent=control*(2f*(1f-t))+(end-control)*(2f*t);
+        return control*(2f*(1f-t)*t)+end*(t*t);
     }
     Vector3 OpenKruegerPoint(Device d,Vector3 p)
     {
@@ -634,7 +628,6 @@ internal sealed class WingDevices
         return new Quaternion(axis.x*s,axis.y*s,axis.z*s,(float)Math.Cos(a));
     }
 }
-
 
 
 
