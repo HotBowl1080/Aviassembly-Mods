@@ -323,11 +323,13 @@ internal sealed class WingDevices
         }
         for(int k=supportStart;k<d.indices.Count;k++)d.supportIndices.Add(d.indices[k]);
     }
-    // Keep the original broad bowed profile and returning lip exactly,
+    // Keep the original broad bowed profile, trimming only the free-edge tail,
     // reflecting only its chord direction. The rest orientation tucks this
     // same rigid shape inside the wing; deployment rotates it back out.
     static Vector2 KruegerProfile(float t)
     {
+        // Trim 50.8 mm from the returning free edge; retain the existing bow.
+        if(t>.75f)t=.75f+(t-.75f)*0.435072035f;
         Vector2 control=new Vector2(-.105f,-.200f),end=new Vector2(-.225f,-.040f);
         Vector2 open=control*(2f*(1f-t)*t)+end*(t*t);
         double rest=-45.0*Math.PI/180.0;
@@ -628,7 +630,7 @@ internal sealed class WingDevices
                 BigWingPreset.LeadingEdgeExtension(flapAngle):BigWingPreset.SlatExtension(flapAngle);
             if(d.leadingFlap)
             {
-                Quaternion hingeRotation=Rotation(d.hingeAxis,(down.y<0f?95f:-95f)*fraction);
+                Quaternion hingeRotation=Rotation(d.hingeAxis,(down.y<0f?115f:-115f)*fraction);
                 foreach(int id in d.indices)
                 {
                     var v=mesh.vertices[id];

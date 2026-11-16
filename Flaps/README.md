@@ -1,4 +1,4 @@
-# Big Wing Flaps v0.19.0
+# Big Wing Flaps v0.20.0
 
 Install AviassemblyFlaps.dll in Aviassembly/BepInEx/plugins and restart the game. Enable flaps on each Big Wing. Use the lever or [ / ].
 
@@ -9,7 +9,7 @@ Install AviassemblyFlaps.dll in Aviassembly/BepInEx/plugins and restart the game
 | 3 | 20 degrees | Extended | Retracted |
 | 4 | 30 degrees | Extended | Extended |
 
-The LE flaps restore the original broad bowed profile and returning lip from v0.13, reflected fore/aft at its original width and depth. Full deployment now adds 45 degrees of rotation to the v0.18 position: 95 degrees of hinge travel from the unchanged stowed pose. The curved profile, hinge, slats and trailing-flap geometry are unchanged. This same rigid curve folds into the wing and swings down about an attached hinge without morphing or sliding forward.
+The LE flaps keep the broad bowed profile from v0.18. The final 50.8 mm (2 inches) of the curved free edge is trimmed away, leaving the mounting region and ribs unchanged. Full deployment now uses 115 degrees of hinge travel, 20 degrees more than v0.19. The panel remains rigid and retains the existing hinge and stowed fit.
 
 The three slat panels follow section-specific tracks fitted against the actual fixed wing mesh, including separator and root geometry. Their aft upper rail has a roughly 12 mm opening at full extension, checked at 102 points along the span. Cross sections keep their rounded shape, with closed fixed wing noses behind the slot. The tracks now keep every section on its own span plane, so slat ends no longer drift sideways into the fixed tip collars.
 
@@ -17,10 +17,10 @@ Both trailing-edge flap members connect beneath the stationary cover. The main c
 
 ## Model preview
 
-[Download the v0.19 viewer ZIP](https://github.com/HotBowl1080/Aviassembly-Mods/raw/refs/heads/main/Flaps/aviassembly-wing-preview-v0.19.zip). Extract All, then open aviassembly-wing-preview-v0.19.html in Chrome or Edge. Check that the heading says v0.19. Internet access is needed to load the rendering library.
+[Download the v0.20 viewer ZIP](https://github.com/HotBowl1080/Aviassembly-Mods/raw/refs/heads/main/Flaps/aviassembly-wing-preview-v0.20.zip). Extract All, then open aviassembly-wing-preview-v0.20.html in Chrome or Edge. Check that the heading says v0.20. Internet access is needed to load the rendering library.
 
 Drag to rotate, scroll to zoom, and choose Whole wing, Flaps, Aileron, Slats or LE flaps. The native aileron is shown at neutral. The Flaps highlight includes both moving connectors. The viewer uses the generated mod mesh for every degree of travel.
 
-Validation: v0.19 is an angle-only patch to the previously compiled v0.18 DLL. Its two LE rotation constants change from +/-50 to +/-95 degrees, with the plugin version updated; every other byte is preserved. The matching source uses the same values. The viewer applies the additional hinge rotation to both LE panels and their normals, verified against the 95-degree transform across 6,556 vertex/angle comparisons within 0.3 mm (mesh quantization). Prior v0.18 geometry checks covered stowed fit, slat slots, flap connections and rigid hinge motion. New browser and in-game runtime checks could not be run for this update.
+Validation: the v0.20 DLL is a targeted managed-code patch of the previously compiled build, with matching source. The new profile argument mapping was checked against the source at 109 inputs; the original profile calculation body is retained. The trim measures 1.99999999 inches along the quadratic curve. Checks against the viewer mesh confirm that the minimum stowed clearance is unchanged on both LE panels. The viewer applies the same trimmed profile and 115-degree travel, with corrected surface normals. New browser rendering and in-game runtime checks could not be run for this update.
 
 Enablement must currently be selected again after loading an aircraft. Source is in src. Build against installed Unity, game, BepInEx and Harmony assemblies.
