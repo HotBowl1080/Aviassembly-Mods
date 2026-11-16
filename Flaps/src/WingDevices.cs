@@ -271,30 +271,43 @@ internal sealed class WingDevices
     void CloseLeadingSkin(Device d)
     {
         d.indices.Clear();
-        const int stations=17,points=17;
-        var outer=new Vector3[stations,points];
-        var inner=new Vector3[stations,points];
-        var core=new Vector3[stations,points];
+        const int stations=5;
+        double[] angles={0.0,70.0,125.0,180.0};
+        var outer=new Vector3[stations,2];
+        var inner=new Vector3[stations,2];
+        var core=new Vector3[stations,4];
+        var fixedSkin=new Vector3[stations,3];
+        var fixedInner=new Vector3[stations,3];
         for(int s=0;s<stations;s++)
         {
             float z=Mathf.Lerp(d.first,d.last,s/(float)(stations-1));
             float x=d.Cut(z),rear,front;Section(z,out rear,out front);
             float top=Surface(x,z,true),bottom=Surface(x,z,false);
             float cy=(top+bottom)*.5f,height=(top-bottom)*.5f,depth=front-x;
-            for(int k=0;k<points;k++)
+            for(int k=0;k<angles.Length;k++)
             {
-                double theta=k*Math.PI/(points-1);
+                double theta=angles[k]*Math.PI/180.0;
                 float sin=(float)Math.Sin(theta),cos=(float)Math.Cos(theta);
-                Vector3 n=new Vector3(sin/Math.Max(depth,.001f),cos/Math.Max(height,.001f),0f).normalized;
-                outer[s,k]=new Vector3(x+depth*sin,cy+height*cos,z);
-                inner[s,k]=outer[s,k]-n*.003f;
-                // A closed D-section remains beneath the C-shaped moving skin.
-                // Its upper and lower shoulders meet the uncut wing exactly.
+                Vector3 normal=new Vector3(sin/Math.Max(depth,.001f),cos/Math.Max(height,.001f),0f).normalized;
+                Vector3 skinPoint=new Vector3(x+depth*sin,cy+height*cos,z);
+                if(k<2)
+                {
+                    outer[s,k]=skinPoint;
+                    inner[s,k]=skinPoint-normal*.003f;
+                }
+                if(k>0)
+                {
+                    fixedSkin[s,k-1]=skinPoint;
+                    fixedInner[s,k-1]=skinPoint-normal*.003f;
+                }
                 core[s,k]=new Vector3(x+Math.Max(depth-.012f,.008f)*sin,cy+height*cos,z);
             }
         }
+        // Only the upper 70-degree facet moves. The other two facets remain
+        // fixed, forming the same three-segment nose at every flap setting.
         SkinLoft(outer,inner,d);
-        for(int s=0;s<stations-1;s++)for(int k=0;k<points-1;k++)
+        SkinLoft(fixedSkin,fixedInner,null);
+        for(int s=0;s<stations-1;s++)for(int k=0;k<3;k++)
         {
             Vector3 normal=Vector3.Cross(core[s+1,k]-core[s,k],core[s,k+1]-core[s,k]);
             Quad(core[s,k],core[s+1,k],core[s+1,k+1],core[s,k+1],normal,null,0);
@@ -302,12 +315,12 @@ internal sealed class WingDevices
         for(int side=0;side<2;side++)
         {
             int s=side==0?0:stations-1;
-            Vector3 center=(core[s,0]+core[s,points-1])*.5f;
-            for(int k=0;k<points-1;k++)
+            Vector3 center=(core[s,0]+core[s,3])*.5f;
+            for(int k=0;k<3;k++)
                 Face(center,core[s,k],core[s,k+1],side==0?Vector3.back:Vector3.forward,null,0);
         }
         for(int s=0;s<stations-1;s++)
-            Quad(core[s,0],core[s,points-1],core[s+1,points-1],core[s+1,0],Vector3.left,null,0);
+            Quad(core[s,0],core[s,3],core[s+1,3],core[s+1,0],Vector3.left,null,0);
     }
 
     void SkinLoft(Vector3[,] outer,Vector3[,] inner,Device owner)
@@ -385,6 +398,7 @@ internal sealed class WingDevices
         return new Quaternion(axis.x*s,axis.y*s,axis.z*s,(float)Math.Cos(a));
     }
 }
+
 
 
 
