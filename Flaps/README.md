@@ -1,4 +1,4 @@
-# Big Wing Flaps v0.9.1
+# Big Wing Flaps v0.10.0
 
 Install AviassemblyFlaps.dll in Aviassembly/BepInEx/plugins. Enable flaps on each Big Wing.
 
@@ -9,8 +9,8 @@ Install AviassemblyFlaps.dll in Aviassembly/BepInEx/plugins. Enable flaps on eac
 | 3 | 20 degrees | Extended | Retracted |
 | 4 | 30 degrees | Extended | Extended |
 
-Use the lever or [ / ]. Enabled wings use a consistent three-facet leading-edge model in the builder and flight. Only the upper 70-degree nose segment moves as a slat. The lower nose and closed wing structure remain fixed. Underside LE panels deploy at the final setting.
+Use the lever or [ / ]. The three-facet leading edge extends across the Big Wing, including stationary sections between slats and the inboard section. Shared shading normals give the low-poly surface a smoother appearance. Two facets move as each slat. The underside LE flap stows inside the rounded nose and swings forward at the last setting.
 
-The trailing-edge flap connects under the stationary cover. Hold Control (throttle-decrease) at idle or reverse for spoilers and ground braking.
+The trailing-edge flap connects under its stationary cover. Hold Control (throttle-decrease) at idle or reverse for spoilers and ground braking.
 
-Flap enablement must currently be selected again after loading an aircraft. Source is in src. Build against installed Unity, game, BepInEx and Harmony assemblies.
+Enablement must currently be selected again after loading an aircraft. Source is in src. Build against installed Unity, game, BepInEx and Harmony assemblies.
