@@ -18,3 +18,9 @@ Both trailing-edge flap members connect beneath the stationary cover. Hold Contr
 Validation: compiled against the installed game. Geometry checks cover the restored aft-curving LE profile, all deployment angles and retraction in both wing orientations, stowed clearance, uniform rigid slat travel, root seams, flap bridges, slot clearance, shading and guide-track engagement. The in-conversation preview uses the actual generated mesh at every degree of flap travel. Preview lighting differs from the game; in-game visual verification is still needed.
 
 Enablement must currently be selected again after loading an aircraft. Source is in src. Build against installed Unity, game, BepInEx and Harmony assemblies.
+
+## Model preview
+
+[Download the 3D model viewer](https://github.com/HotBowl1080/Aviassembly-Mods/raw/refs/heads/main/Flaps/aviassembly-wing-preview.html) and open the downloaded HTML file in Chrome or Edge. Drag to rotate, scroll to zoom, select a close-up, and use the four flap settings. Internet access is needed to load the rendering library.
+
+The preview contains the actual v0.15 wing geometry. Its lighting differs from the game.
