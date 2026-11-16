@@ -7,7 +7,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-[BepInPlugin("com.andrewstack.aviassembly.flaps", "Aviassembly Flaps", "0.5.1")]
+[BepInPlugin("com.andrewstack.aviassembly.flaps", "Aviassembly Flaps", "0.6.0")]
 public class FlapsPlugin : BaseUnityPlugin
 {
     internal static int stage { get; private set; }
@@ -16,10 +16,15 @@ public class FlapsPlugin : BaseUnityPlugin
     internal static GameObject template;
     internal static FlapsPlugin instance;
     internal static PlaneContainer activePlane;
+    internal static bool spoilersRequested;
     internal static void LogDetail(string message) { if (instance) instance.Logger.LogInfo(message); }
     void Awake() { instance = this; new Harmony("com.andrewstack.aviassembly.flaps").PatchAll(); }
     void Update()
     {
+        var controls=InputManager.Instance;
+        spoilersRequested=activePlane && activePlane.FlightModeInitialized && controls &&
+            controls.throttleInput<0f && activePlane.GetTotalThrust().sqrMagnitude<.0001f &&
+            !(flightUI && flightUI.UIOpen);
         if (Input.GetKeyDown(KeyCode.RightBracket)) SelectStage(stage + 1);
         if (Input.GetKeyDown(KeyCode.LeftBracket)) SelectStage(stage - 1);
     }
@@ -38,7 +43,7 @@ public class FlapsPlugin : BaseUnityPlugin
         if (!ShowSelector || Time.timeScale <= 0f) return;
         var input=InputManager.Instance;
         if (input && input.currentInputBlocker) return;
-        stage=Mathf.Clamp(desired,0,3);
+        stage=Mathf.Clamp(desired,0,BigWingPreset.FlapAngles.Length-1);
     }
     internal static GameObject FindTemplate()
     {
@@ -57,6 +62,8 @@ public class FlapMarker : MonoBehaviour
     PlaneContainer owner;
     BigWingGeometry geometry;
     float angle;
+    float spoilerFraction;
+    internal float SpoilerFraction { get { return spoilerFraction; } }
     public bool IsReady { get { return geometry != null; } }
     internal bool CanOperate(PlaneContainer plane) { return owner==plane && isActiveAndEnabled && wing && wing.isActiveAndEnabled && wing.rb; }
 
@@ -93,11 +100,13 @@ public class FlapMarker : MonoBehaviour
     {
         if(!IsReady || !wing) return;
         bool flying=wing.rb && FlapsPlugin.activePlane && FlapsPlugin.activePlane.FlightModeInitialized;
-        float next=flying ? Mathf.MoveTowards(angle,FlapsPlugin.stage*10f,45f*Time.deltaTime) : 0f;
-        if(next==angle) return;
+        float next=flying ? Mathf.MoveTowards(angle,BigWingPreset.Angle(FlapsPlugin.stage),45f*Time.deltaTime) : 0f;
+        float nextSpoiler=flying ? Mathf.MoveTowards(spoilerFraction,FlapsPlugin.spoilersRequested?1f:0f,3f*Time.deltaTime) : 0f;
+        if(next==angle && nextSpoiler==spoilerFraction) return;
         angle=next;
-        if(angle==0f) { filter.sharedMesh=original; return; }
-        geometry.Pose(angle, transform.InverseTransformVector(-wing.rb.transform.up).normalized);
+        spoilerFraction=nextSpoiler;
+        if(angle==0f && spoilerFraction==0f) { filter.sharedMesh=original; return; }
+        geometry.Pose(angle, transform.InverseTransformVector(-wing.rb.transform.up).normalized,spoilerFraction);
         deployed.vertices=geometry.positions;
         deployed.normals=geometry.normals;
         if(filter.sharedMesh!=deployed) filter.sharedMesh=deployed;
@@ -239,16 +248,33 @@ public static class WingSettings
 [HarmonyPatch(typeof(Wing), "UpdatePart")]
 public static class FlapPhysics
 {
-    static void Postfix(Wing __instance, PlaneContainer __0)
+    static void Prefix(Wing __instance,out float __state)
     {
+        __state=__instance.liftForce;
+        var marker=__instance.GetComponent<FlapMarker>();
+        if(marker && marker.IsReady) __instance.liftForce*=1f-.55f*marker.SpoilerFraction;
+    }
+    static void Postfix(Wing __instance, PlaneContainer __0,float __state)
+    {
+        __instance.liftForce=__state;
         FlapMarker marker = __instance.GetComponent<FlapMarker>();
-        if (FlapsPlugin.stage == 0 || !marker || !marker.IsReady || !__instance.rb || !__instance.orientation) return;
+        if (!marker || !marker.IsReady || !__instance.rb || !__instance.orientation) return;
+        float spoiler=marker.SpoilerFraction;
+        __0.airbreakDrag+=.65f*spoiler;
+        if(spoiler>0f && __0.IsGrounded())
+        {
+            Vector3 groundVelocity=Vector3.ProjectOnPlane(__instance.rb.linearVelocity,Vector3.up);
+            float deceleration=Mathf.Min(2f,groundVelocity.magnitude/(Time.fixedDeltaTime*Mathf.Max(1,FlapsPlugin.fittedWings.Count)));
+            __instance.rb.AddForce(-groundVelocity.normalized*deceleration*spoiler,ForceMode.Acceleration);
+        }
+        if(FlapsPlugin.stage==0) return;
         Vector3 velocity = __instance.rb.GetPointVelocity(__instance.orientation.position);
         float speed = velocity.magnitude;
         if (speed < 0.1f) return;
-        float fraction = FlapsPlugin.stage / 3f;
+        float fraction = BigWingPreset.Angle(FlapsPlugin.stage) / 30f;
         float strength = speed * speed * __instance.GetWingArea() * __instance.liftForce * __0.GravityMultiplier * __0.liftMultiplier;
-        Vector3 lift = Vector3.ProjectOnPlane(__instance.rb.transform.up, velocity.normalized).normalized * strength * 0.25f * fraction;
+        float slatLift=.08f*Mathf.Clamp01(BigWingPreset.Angle(FlapsPlugin.stage)/20f);
+        Vector3 lift = Vector3.ProjectOnPlane(__instance.rb.transform.up, velocity.normalized).normalized * strength * (.25f*fraction+slatLift)*(1f-.55f*spoiler);
         Vector3 drag = -velocity.normalized * strength * 0.18f * fraction;
         __instance.rb.AddForceAtPosition(lift + drag, __instance.orientation.position);
     }

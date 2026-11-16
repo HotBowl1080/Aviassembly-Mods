@@ -30,6 +30,8 @@ internal sealed class BigWingGeometry
     const float VaneChord=.090f;
     static readonly Vector3 vanePinOffset=Vector3.left*.014f+Vector3.down*.080f;
     internal readonly Vector3[] positions,normals;
+    readonly WingDevices devices;
+    internal void DeviceFace(Vector3 a,Vector3 b,Vector3 c,Vector3 outward) { Face(a,b,c,outward,-1); }
     int Add(Vertex v,int group)
     {
         int i=vertices.Count;
@@ -76,6 +78,7 @@ internal sealed class BigWingGeometry
             BuildVane(p,f);
         }
         for(int t=0;t<3;t++) FinishTrack(t);
+        devices=new WingDevices(this,p,skin);
         positions=new Vector3[vertices.Count]; normals=new Vector3[vertices.Count];
         for(int i=0;i<vertices.Count;i++) { positions[i]=vertices[i].p; normals[i]=vertices[i].n; }
     }
@@ -232,6 +235,10 @@ internal sealed class BigWingGeometry
     }
     internal void Pose(float degrees,Vector3 down)
     {
+        Pose(degrees,down,0f);
+    }
+    internal void Pose(float degrees,Vector3 down,float spoilers)
+    {
         // Match the motion of the chord at each span station along the swept cutout.
         // A rotation around the diagonal cut edge also swings the trailing edge sideways.
         float sign=down.y>0f ? -1f : 1f;
@@ -281,6 +288,7 @@ internal sealed class BigWingGeometry
             Quaternion q=new Quaternion(cross.x*inv,cross.y*inv,cross.z*inv,w*inv);
             foreach(int i in moving[t+2]) { positions[i]=pin[t]+q*(vertices[i].p-pin[t]); normals[i]=q*vertices[i].n; }
         }
+        devices.Pose(degrees,spoilers,down);
     }
 }
 
