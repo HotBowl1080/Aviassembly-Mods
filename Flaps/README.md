@@ -21,6 +21,6 @@ Enablement must currently be selected again after loading an aircraft. Source is
 
 ## Model preview
 
-[Download the 3D model viewer](https://github.com/HotBowl1080/Aviassembly-Mods/raw/refs/heads/main/Flaps/aviassembly-wing-preview.html) and open the downloaded HTML file in Chrome or Edge. Drag to rotate, scroll to zoom, select a close-up, and use the four flap settings. Internet access is needed to load the rendering library.
+[Download the viewer ZIP](https://github.com/HotBowl1080/Aviassembly-Mods/raw/refs/heads/main/Flaps/aviassembly-wing-preview.zip). Right-click the downloaded ZIP, choose Extract All, and open aviassembly-wing-preview.html in Chrome or Edge. Keep internet access available to load the rendering library.
 
-The preview contains the actual v0.15 wing geometry. Its lighting differs from the game.
+Drag to rotate, scroll to zoom, select a close-up, and use the four flap settings. The viewer contains the actual v0.15 wing geometry; lighting differs from the game. The ZIP avoids GitHub displaying raw HTML as plain text.
