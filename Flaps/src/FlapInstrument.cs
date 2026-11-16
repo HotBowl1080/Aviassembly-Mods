@@ -7,10 +7,10 @@ using UnityEngine.UI;
 [HarmonyPatch(typeof(SpeedDial), "Start")]
 internal static class AttachFlapInstrument
 {
-    static void Postfix(SpeedDial dial)
+    static void Postfix(SpeedDial __instance)
     {
-        if (!dial.GetComponent<FlapInstrument>())
-            dial.gameObject.AddComponent<FlapInstrument>().Attach(dial);
+        if (!__instance.GetComponent<FlapInstrument>())
+            __instance.gameObject.AddComponent<FlapInstrument>().Attach(__instance);
     }
 }
 
@@ -152,3 +152,5 @@ public sealed class FlapInstrumentPlate : MaskableGraphic
             mesh.AddTriangle(middle,middle+1+(p+1)%perimeter,middle+1+p);
     }
 }
+
+
