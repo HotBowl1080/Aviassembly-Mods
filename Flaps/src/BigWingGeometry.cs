@@ -42,6 +42,12 @@ internal sealed class BigWingGeometry
     internal readonly Vector3[] positions,normals;
     readonly WingDevices devices;
     internal void DeviceFace(Vector3 a,Vector3 b,Vector3 c,Vector3 outward) { Face(a,b,c,outward,-1); }
+    internal HashSet<int> MovingVertexIds()
+    {
+        var ids=new HashSet<int>();foreach(var group in moving)foreach(int id in group)ids.Add(id);
+        foreach(var vertex in flapBridge)ids.Add(vertex.id);foreach(var vertex in vaneBridge)ids.Add(vertex.id);
+        return ids;
+    }
     int Add(Vertex v,int group)
     {
         int i=vertices.Count;
@@ -97,8 +103,19 @@ internal sealed class BigWingGeometry
     {
         Vector3[] inner={p[137],p[135],p[133],p[132]};
         Vector3[] outer={p[122],p[125],p[127],p[129]};
-        BuildBridge(inner,outer,flapBridge);
+        BuildBridge(RoundedFlapEnd(inner,1),RoundedFlapEnd(outer,0),flapBridge);
         BuildBridge(vaneCoverEnds[1],vaneCoverEnds[0],vaneBridge);
+    }
+    Vector3[] RoundedFlapEnd(Vector3[] end,int flap)
+    {
+        var profile=new List<Vector3>(end);
+        Vector3 forward=Vector3.ProjectOnPlane(-aft,axis[flap]).normalized;
+        for(int k=5;k>=1;k--)
+        {
+            float theta=(float)Math.PI*k/6f;
+            profile.Add(Vector3.Lerp(end[0],end[3],.5f-.5f*(float)Math.Cos(theta))+forward*(.050f*(float)Math.Sin(theta)));
+        }
+        return profile.ToArray();
     }
     void BuildBridge(Vector3[] inner,Vector3[] outer,List<BridgeVertex> bridge)
     {
@@ -360,5 +377,4 @@ internal sealed class BigWingGeometry
         devices.Pose(degrees,spoilers,down);
     }
 }
-
 

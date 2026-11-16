@@ -17,20 +17,16 @@ internal sealed class WingDevices
     // Short facets keep the game's low-poly style; shared normals round the lighting.
     static readonly double[] NoseAngles={0.0,30.0,60.0,90.0,120.0,150.0,180.0};
     const int SlatFaces=3;
-    const float KruegerChord=.22f;
     sealed class Device
     {
         internal float first,last,cutFirst,cutLast,frontFirst,frontLast,lowerFirst,lowerLast;
         internal bool spoiler,leadingFlap,fixedNose,rootNose;
         internal float hingeYFirst,hingeYLast;
+        internal Vector3 pivot,hingeAxis;
         internal readonly List<int> indices=new List<int>();
-        internal readonly Dictionary<float,Vector3> hingeSections=new Dictionary<float,Vector3>();
-        internal readonly Dictionary<float,Vector3> slopeSections=new Dictionary<float,Vector3>();
         internal readonly Dictionary<float,Vector3> slatTracks=new Dictionary<float,Vector3>();
         internal readonly Dictionary<float,Vector3> slatTrackSlopes=new Dictionary<float,Vector3>();
         internal readonly HashSet<int> supportIndices=new HashSet<int>();
-        internal readonly Dictionary<int,Vector3> openPositions=new Dictionary<int,Vector3>();
-        internal readonly Dictionary<int,Vector3> openNormals=new Dictionary<int,Vector3>();
         internal float Cut(float z) { return Lerp(cutFirst,cutLast,z); }
         internal float Front(float z) { return Lerp(frontFirst,frontLast,z); }
         internal float Lower(float z) { return Lerp(lowerFirst,lowerLast,z); }
@@ -42,6 +38,11 @@ internal sealed class WingDevices
     readonly int[] surface;
     readonly List<Device> devices=new List<Device>();
     readonly List<Device> fixedNoses=new List<Device>();
+    sealed class FixedTriangle
+    {
+        internal Vector3 a,b,c,min,max;
+    }
+    readonly List<FixedTriangle> fixedSurface=new List<FixedTriangle>();
     readonly List<int> cutPaint=new List<int>();
     readonly List<int[]> leadingCaps=new List<int[]>();
     internal readonly int[] skinPartition;
@@ -127,6 +128,8 @@ internal sealed class WingDevices
             CloseDevice(d);
         }
         foreach(Device d in fixedNoses) CloseLeadingSkin(d);
+        BuildFixedSurface();
+        foreach(Device d in devices)if(!d.spoiler&&!d.leadingFlap)PrepareSlatTracks(d);
     }
     static float Signed(Vector3 p,Device d,int plane)
     {
@@ -275,95 +278,57 @@ internal sealed class WingDevices
     {
         d.indices.Clear();
         const int stations=7,points=13;
-        var outer=new Vector3[stations,points];
-        var inner=new Vector3[stations,points];
-        float[] hingeX=new float[stations],hingeY=new float[stations];
-        float rearA,frontA,rearB,frontB;
-        Section(d.first,out rearA,out frontA);Section(d.last,out rearB,out frontB);
-        d.frontFirst=frontA-.09f;d.frontLast=frontB-.09f;
-        for(int s=0;s<stations;s++)
+        float rear,frontA,frontB;Section(d.first,out rear,out frontA);Section(d.last,out rear,out frontB);
+        d.frontFirst=frontA-.080f;d.frontLast=frontB-.080f;
+        Vector3 a=new Vector3(d.frontFirst,StowedBottom(d.frontFirst,d.first)+.025f,d.first);
+        Vector3 b=new Vector3(d.frontLast,StowedBottom(d.frontLast,d.last)+.025f,d.last);
+        d.hingeAxis=Unit(b-a);
+        Vector3 forward=Unit(Vector3.Cross(Vector3.up,d.hingeAxis));
+        Vector3 up=Unit(Vector3.Cross(d.hingeAxis,forward));
+        var outer=new Vector3[stations,points];var inner=new Vector3[stations,points];
+        float lowerGap=float.PositiveInfinity,upperGap=float.PositiveInfinity;
+        for(int s=0;s<stations;s++)for(int k=0;k<points;k++)
         {
-            float z=Mathf.Lerp(d.first,d.last,s/(float)(stations-1));
-            float x=d.Front(z);
-            float y=StowedBottom(x,z)+.014f;
-            hingeX[s]=x;hingeY[s]=y;
-            for(int k=0;k<points;k++)
+            Vector2 profile=KruegerProfile(k/(float)(points-1));
+            Vector3 p=Vector3.Lerp(a,b,s/(float)(stations-1))+forward*profile.x+up*profile.y;
+            outer[s,k]=p;inner[s,k]=p+up*.003f;
+            foreach(Vector3 q in new[]{outer[s,k],inner[s,k]})
             {
-                float t=k/(float)(points-1);
-                // Closed underside door. Its open shape is a short drooped
-                // panel with a returning bullnose, not another slat strip.
-                outer[s,k]=new Vector3(x-KruegerChord*t,StowedBottom(x-KruegerChord*t,z)+.014f,z);
-                inner[s,k]=outer[s,k]+Vector3.up*.003f;
+                lowerGap=Math.Min(lowerGap,q.y-StowedBottom(q.x,q.z));
+                upperGap=Math.Min(upperGap,Surface(q.x,q.z,true)-q.y);
             }
         }
-        d.frontFirst=hingeX[0];d.frontLast=hingeX[stations-1];
-        d.hingeYFirst=hingeY[0];d.hingeYLast=hingeY[stations-1];
+        float low=.012f-lowerGap,high=upperGap-.004f;
+        if(low>high)throw new ArgumentException("Rigid LE panel does not fit inside the wing");
+        float offset=Math.Max(low,Math.Min(0f,high));
+        a.y+=offset;b.y+=offset;d.pivot=a;
+        d.hingeYFirst=a.y;d.hingeYLast=b.y;
+        for(int s=0;s<stations;s++)for(int k=0;k<points;k++)
+        {outer[s,k].y+=offset;inner[s,k].y+=offset;}
         SkinLoft(outer,inner,d);
         int supportStart=d.indices.Count;
-        // Two compact hinge webs, folded inside the wing when retracted.
         foreach(float span in new[]{.24f,.76f})
         {
-            float z=Mathf.Lerp(d.first,d.last,span);
-            var web=new Vector3[2,3];
-            for(int side=0;side<2;side++)
-            {
-                float zs=z+(side==0?-.004f:.004f);
-                float xs=d.Front(zs);
-                web[side,0]=new Vector3(xs,StowedBottom(xs,zs)+.018f,zs);
-                web[side,1]=new Vector3(xs-KruegerChord*.57f,StowedBottom(xs-KruegerChord*.57f,zs)+.018f,zs);
-                web[side,2]=new Vector3(xs-KruegerChord*.24f,StowedBottom(xs-KruegerChord*.24f,zs)+.036f,zs);
-                Face(web[side,0],web[side,1],web[side,2],side==0?Vector3.back:Vector3.forward,d);
-            }
+            Vector3 center=Vector3.Lerp(a,b,span),dz=d.hingeAxis*.004f;
+            Vector2 mount=KruegerProfile(.55f);
+            Vector3[] corners={center+up*.006f,center+forward*mount.x+up*(mount.y+.004f),center-forward*.040f+up*.022f};
+            Face(corners[0]-dz,corners[1]-dz,corners[2]-dz,-dz,d);
+            Face(corners[0]+dz,corners[1]+dz,corners[2]+dz,dz,d);
+            Vector3 centroid=(corners[0]+corners[1]+corners[2])/3f;
             for(int k=0;k<3;k++)
             {
-                int next=(k+1)%3;
-                Vector3 normal=Vector3.Cross(web[1,k]-web[0,k],web[0,next]-web[0,k]);
-                Quad(web[0,k],web[1,k],web[1,next],web[0,next],normal,d);
+                Vector3 p=corners[k],q=corners[(k+1)%3];
+                Quad(p-dz,q-dz,q+dz,p+dz,(p+q)*.5f-centroid,d);
             }
         }
-        for(int w=supportStart;w<d.indices.Count;w++)d.supportIndices.Add(d.indices[w]);
-        foreach(int id in d.indices)
-        {
-            float z=mesh.vertices[id].p.z;
-            if(d.hingeSections.ContainsKey(z))continue;
-            float z0=Math.Max(d.first,z-.0005f),z1=Math.Min(d.last,z+.0005f);
-            d.slopeSections.Add(z,(Hinge(d,z1)-Hinge(d,z0))/(z1-z0));
-            d.hingeSections.Add(z,Hinge(d,z));
-        }
-        // Cache the deployed profile and its inverse-transpose normals once.
-        // Deploying then only blends cached geometry during the folding motion.
-        const float step=.0001f;
-        foreach(int id in d.indices)
-        {
-            var v=mesh.vertices[id];bool support=d.supportIndices.Contains(id);
-            Vector3 point=OpenKruegerPoint(d,v.p,support);
-            Vector3 dx=(OpenKruegerPoint(d,v.p+Vector3.right*step,support)-OpenKruegerPoint(d,v.p-Vector3.right*step,support))/(2f*step);
-            Vector3 dy=(OpenKruegerPoint(d,v.p+Vector3.up*step,support)-OpenKruegerPoint(d,v.p-Vector3.up*step,support))/(2f*step);
-            Vector3 dz=(OpenKruegerPoint(d,v.p+Vector3.forward*step,support)-OpenKruegerPoint(d,v.p-Vector3.forward*step,support))/(2f*step);
-            Vector3 normal=Vector3.Cross(dy,dz)*v.n.x+Vector3.Cross(dz,dx)*v.n.y+Vector3.Cross(dx,dy)*v.n.z;
-            if(Vector3.Dot(dx,Vector3.Cross(dy,dz))<0f)normal=-normal;
-            d.openPositions.Add(id,point);d.openNormals.Add(id,normal.normalized);
-        }
+        for(int k=supportStart;k<d.indices.Count;k++)d.supportIndices.Add(d.indices[k]);
     }
-    // Preserve the v0.13 scoop curve, mirrored fore/aft. Placement is
-    // handled separately so the aft-curling skin clears the stationary wing.
-    static Vector2 KruegerProfile(float t,out Vector2 tangent)
+    // One fixed curved section. Rotation by 90 degrees turns its aft tip
+    // downward while retaining the backward curve. No deployed-shape morph.
+    static Vector2 KruegerProfile(float t)
     {
-        Vector2 control=new Vector2(-.105f,-.200f),end=new Vector2(-.225f,-.040f);
-        tangent=control*(2f*(1f-t))+(end-control)*(2f*t);
+        Vector2 control=new Vector2(-.115f,0f),end=new Vector2(-.170f,.075f);
         return control*(2f*(1f-t)*t)+end*(t*t);
-    }
-    Vector3 OpenKruegerPoint(Device d,Vector3 p,bool support=false)
-    {
-        Vector3 hinge=Hinge(d,p.z);
-        float t=(hinge.x-p.x)/KruegerChord;
-        Vector2 tangent,profile=KruegerProfile(t,out tangent);
-        Vector2 normal=new Vector2(-tangent.y,tangent.x).normalized;
-        float thickness=p.y-(StowedBottom(p.x,p.z)+.014f);
-        Vector3 open=hinge+new Vector3(.240f+profile.x-normal.x*thickness,profile.y-normal.y*thickness,0f);
-        // Keep the scoop outside the nose, with its aft curl below the wing.
-        // The rib roots stay attached while the panels fold forward.
-        return support?Vector3.Lerp(p,open,Mathf.Clamp01(t/.57f)):open;
     }
     float StowedBottom(float x,float z)
     {
@@ -407,6 +372,8 @@ internal sealed class WingDevices
             float z=Mathf.LerpUnclamped(a.z,b.z,da/(da-db));
             if(z>d.first && z<d.last)candidates.Add(z);
         }
+        if(!d.fixedNose)foreach(float distance in new[]{.004f,.008f,.016f,.032f,.064f})
+        {if(d.first+distance<d.last)candidates.Add(d.first+distance);if(d.last-distance>d.first)candidates.Add(d.last-distance);}
         candidates.Sort();var stations=new List<float>();
         foreach(float z in candidates)
             if(stations.Count==0||z-stations[stations.Count-1]>.000001f)stations.Add(z);
@@ -505,17 +472,72 @@ internal sealed class WingDevices
         }
         for(int s=0;s<stations-1;s++)
             Quad(core[s,0],core[s,angles.Length-1],core[s+1,angles.Length-1],core[s+1,0],Vector3.left,null,0);
-        if(!d.fixedNose)PrepareSlatTracks(d);
     }
 
+    void BuildFixedSurface()
+    {
+        var moving=mesh.MovingVertexIds();foreach(Device d in devices)foreach(int id in d.indices)moving.Add(id);
+        foreach(var sub in mesh.triangles)for(int t=0;t<sub.Count;t+=3)
+        {
+            if(moving.Contains(sub[t])||moving.Contains(sub[t+1])||moving.Contains(sub[t+2]))continue;
+            Vector3 a=mesh.vertices[sub[t]].p,b=mesh.vertices[sub[t+1]].p,c=mesh.vertices[sub[t+2]].p;
+            fixedSurface.Add(new FixedTriangle{a=a,b=b,c=c,min=Vector3.Min(a,Vector3.Min(b,c)),max=Vector3.Max(a,Vector3.Max(b,c))});
+        }
+    }
+    float FixedDistance(Vector3 p)
+    {
+        float squared=.01f;
+        foreach(var t in fixedSurface)
+        {
+            float dx=Math.Max(0f,Math.Max(t.min.x-p.x,p.x-t.max.x));
+            float dy=Math.Max(0f,Math.Max(t.min.y-p.y,p.y-t.max.y));
+            float dz=Math.Max(0f,Math.Max(t.min.z-p.z,p.z-t.max.z));
+            if(dx*dx+dy*dy+dz*dz>=squared)continue;
+            squared=Math.Min(squared,TriangleDistance(p,t.a,t.b,t.c));
+        }
+        return (float)Math.Sqrt(squared);
+    }
+    float SlotOffset(Vector3 seat,Vector3 normal)
+    {
+        const float gap=.012f;
+        if(FixedDistance(seat+normal*gap)>=gap-.000001f)return gap;
+        float low=gap,high=.04f;
+        while(FixedDistance(seat+normal*high)<gap && high<.16f)high*=2f;
+        for(int i=0;i<16;i++)
+        {
+            float middle=(low+high)*.5f;
+            if(FixedDistance(seat+normal*middle)<gap)low=middle;else high=middle;
+        }
+        return high;
+    }
+    static float TriangleDistance(Vector3 p,Vector3 a,Vector3 b,Vector3 c)
+    {
+        Vector3 ab=b-a,ac=c-a,ap=p-a;float d1=Vector3.Dot(ab,ap),d2=Vector3.Dot(ac,ap);
+        if(d1<=0&&d2<=0)return ap.sqrMagnitude;
+        Vector3 bp=p-b;float d3=Vector3.Dot(ab,bp),d4=Vector3.Dot(ac,bp);
+        if(d3>=0&&d4<=d3)return bp.sqrMagnitude;
+        float vc=d1*d4-d3*d2;if(vc<=0&&d1>=0&&d3<=0)return (p-(a+ab*(d1/(d1-d3)))).sqrMagnitude;
+        Vector3 cp=p-c;float d5=Vector3.Dot(ab,cp),d6=Vector3.Dot(ac,cp);
+        if(d6>=0&&d5<=d6)return cp.sqrMagnitude;
+        float vb=d5*d2-d1*d6;if(vb<=0&&d2>=0&&d6<=0)return (p-(a+ac*(d2/(d2-d6)))).sqrMagnitude;
+        float va=d3*d6-d5*d4;if(va<=0&&d4-d3>=0&&d5-d6>=0)return (p-(b+(c-b)*((d4-d3)/((d4-d3)+(d5-d6))))).sqrMagnitude;
+        float denominator=va+vb+vc;if(Math.Abs(denominator)<1e-20f)return Math.Min(ap.sqrMagnitude,Math.Min(bp.sqrMagnitude,cp.sqrMagnitude));
+        return (p-(a+ab*(vb/denominator)+ac*(vc/denominator))).sqrMagnitude;
+    }
     Vector3 SlatTrack(Device d,float z)
     {
+        const double theta=Math.PI/3.0;
         float a=Math.Max(d.first,z-.001f),b=Math.Min(d.last,z+.001f);
-        float rear,frontA,frontB,front;Section(a,out rear,out frontA);Section(b,out rear,out frontB);Section(z,out rear,out front);
-        Vector3 outward=Unit(new Vector3(1f,0f,-(frontB-frontA)/(b-a)));
-        // Clearance is measured from the VISIBLE fixed nose, not the buried
-        // original slat cut. Its varying depth caused the previous tapered gap.
-        return Vector3.right*(front-d.Cut(z))+outward*.060f+Vector3.down*.018f;
+        Vector3 seat=LeadingPoint(d,z,theta,.012f);
+        Vector3 span=(LeadingPoint(d,b,theta,.012f)-LeadingPoint(d,a,theta,.012f))/(b-a);
+        float cut=d.Cut(z),rear,front;Section(z,out rear,out front);
+        float top=Surface(cut,z,true),bottom=Surface(cut,z,false);
+        Vector3 tangent=new Vector3(Math.Max(front-cut-.012f,.008f)*(float)Math.Cos(theta),
+            -(top-bottom)*.5f*(float)Math.Sin(theta),0f);
+        Vector3 normal=Unit(Vector3.Cross(span,tangent));
+        // A narrow slot over the actual upper nose surface, not an offset
+        // beyond its foremost silhouette. This avoids the long forward stand-off.
+        return seat+normal*SlotOffset(seat,normal)-new Vector3(cut,top,z);
     }
     void PrepareSlatTracks(Device d)
     {
@@ -597,6 +619,17 @@ internal sealed class WingDevices
         {
             float fraction=d.spoiler?spoilers:d.leadingFlap?
                 BigWingPreset.LeadingEdgeExtension(flapAngle):BigWingPreset.SlatExtension(flapAngle);
+            if(d.leadingFlap)
+            {
+                Quaternion hingeRotation=Rotation(d.hingeAxis,(down.y<0f?90f:-90f)*fraction);
+                foreach(int id in d.indices)
+                {
+                    var v=mesh.vertices[id];
+                    mesh.positions[id]=d.pivot+hingeRotation*(v.p-d.pivot);
+                    mesh.normals[id]=hingeRotation*v.n;
+                }
+                continue;
+            }
             if(!d.spoiler && !d.leadingFlap)
             {
                 foreach(int id in d.indices)
@@ -619,24 +652,10 @@ internal sealed class WingDevices
             foreach(int i in d.indices)
             {
                 var v=mesh.vertices[i];Vector3 hinge=Hinge(d,v.p.z);
-                if(d.leadingFlap)
-                {
-                    slope=d.slopeSections[v.p.z];
-                    correction=slope-rotation*slope;
-                }
                 Vector3 local=v.p-hinge,n=rotation*v.n;
                 mesh.positions[i]=hinge+travel+rotation*local;
                 n.z-=n.x*correction.x+n.y*correction.y;
                 n=n.normalized;
-                if(d.leadingFlap)
-                {
-                    Vector3 target=d.openPositions[i],targetNormal=d.openNormals[i];
-                    if(direction>0f){target.y=2f*hinge.y-target.y;targetNormal.y=-targetNormal.y;}
-                    Quaternion fullyOpen=Rotation(Vector3.forward,-110f*direction);
-                    float roll=fraction*fraction*(3f-2f*fraction);
-                    mesh.positions[i]+=(target-(hinge+fullyOpen*local))*roll;
-                    n=Vector3.LerpUnclamped(n,targetNormal,roll).normalized;
-                }
                 mesh.normals[i]=n;
             }
         }
@@ -654,8 +673,7 @@ internal sealed class WingDevices
     }
     Vector3 Hinge(Device d,float z)
     {
-        Vector3 cached;
-        if(d.leadingFlap && d.hingeSections.TryGetValue(z,out cached))return cached;
+        if(d.leadingFlap)return d.pivot+d.hingeAxis*((z-d.pivot.z)/d.hingeAxis.z);
         float x=d.spoiler||d.leadingFlap?d.Front(z):d.Cut(z);
         float u=(z-d.first)/(d.last-d.first);
         float y=d.leadingFlap?StowedBottom(x,z)+.014f:Mathf.LerpUnclamped(d.hingeYFirst,d.hingeYLast,u);
