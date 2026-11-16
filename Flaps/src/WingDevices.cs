@@ -279,7 +279,7 @@ internal sealed class WingDevices
         d.indices.Clear();
         const int stations=7,points=13;
         float rear,frontA,frontB;Section(d.first,out rear,out frontA);Section(d.last,out rear,out frontB);
-        d.frontFirst=frontA-.080f;d.frontLast=frontB-.080f;
+        d.frontFirst=frontA-.090f;d.frontLast=frontB-.090f;
         Vector3 a=new Vector3(d.frontFirst,StowedBottom(d.frontFirst,d.first)+.025f,d.first);
         Vector3 b=new Vector3(d.frontLast,StowedBottom(d.frontLast,d.last)+.025f,d.last);
         d.hingeAxis=Unit(b-a);
@@ -323,12 +323,16 @@ internal sealed class WingDevices
         }
         for(int k=supportStart;k<d.indices.Count;k++)d.supportIndices.Add(d.indices[k]);
     }
-    // One fixed curved section. Rotation by 90 degrees turns its aft tip
-    // downward while retaining the backward curve. No deployed-shape morph.
+    // Keep the original broad bowed profile and returning lip exactly,
+    // reflecting only its chord direction. The rest orientation tucks this
+    // same rigid shape inside the wing; deployment rotates it back out.
     static Vector2 KruegerProfile(float t)
     {
-        Vector2 control=new Vector2(-.115f,0f),end=new Vector2(-.170f,.075f);
-        return control*(2f*(1f-t)*t)+end*(t*t);
+        Vector2 control=new Vector2(-.105f,-.200f),end=new Vector2(-.225f,-.040f);
+        Vector2 open=control*(2f*(1f-t)*t)+end*(t*t);
+        double rest=-45.0*Math.PI/180.0;
+        return new Vector2(open.x*(float)Math.Cos(rest)-open.y*(float)Math.Sin(rest),
+            open.x*(float)Math.Sin(rest)+open.y*(float)Math.Cos(rest));
     }
     float StowedBottom(float x,float z)
     {
@@ -534,7 +538,10 @@ internal sealed class WingDevices
         float top=Surface(cut,z,true),bottom=Surface(cut,z,false);
         Vector3 tangent=new Vector3(Math.Max(front-cut-.012f,.008f)*(float)Math.Cos(theta),
             -(top-bottom)*.5f*(float)Math.Sin(theta),0f);
-        Vector3 normal=Unit(Vector3.Cross(span,tangent));
+        Vector3 normal=Vector3.Cross(span,tangent);
+        // Keep spanwise end cuts on their own planes. A lateral component
+        // pushed the outer lip into its fixed collar and formed a small hook.
+        normal.z=0f;normal=Unit(normal);
         // A narrow slot over the actual upper nose surface, not an offset
         // beyond its foremost silhouette. This avoids the long forward stand-off.
         return seat+normal*SlotOffset(seat,normal)-new Vector3(cut,top,z);
@@ -621,7 +628,7 @@ internal sealed class WingDevices
                 BigWingPreset.LeadingEdgeExtension(flapAngle):BigWingPreset.SlatExtension(flapAngle);
             if(d.leadingFlap)
             {
-                Quaternion hingeRotation=Rotation(d.hingeAxis,(down.y<0f?90f:-90f)*fraction);
+                Quaternion hingeRotation=Rotation(d.hingeAxis,(down.y<0f?50f:-50f)*fraction);
                 foreach(int id in d.indices)
                 {
                     var v=mesh.vertices[id];

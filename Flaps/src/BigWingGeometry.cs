@@ -143,7 +143,7 @@ internal sealed class BigWingGeometry
     }
     static Vector3 BridgeRest(Vector3 inner,Vector3 outer,float across)
     {
-        return Vector3.Lerp(inner,outer,across)+Vector3.down*(.004f*(float)Math.Sin(across*Math.PI));
+        return Vector3.Lerp(inner,outer,across);
     }
     void Clip(Vertex[] face,float cut,bool rear,int track,int group)
     {
