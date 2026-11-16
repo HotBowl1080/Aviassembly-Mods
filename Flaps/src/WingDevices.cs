@@ -6,6 +6,8 @@ internal static class BigWingPreset
 {
     internal static readonly float[] FlapAngles = {0f,10f,20f,30f};
     internal static float Angle(int stage) { return FlapAngles[Mathf.Clamp(stage,0,FlapAngles.Length-1)]; }
+    internal static float SlatExtension(float angle) { return Mathf.Clamp01((angle-10f)/10f); }
+    internal static float LeadingEdgeExtension(float angle) { return Mathf.Clamp01((angle-20f)/10f); }
 }
 
 // Devices are cut from the stock skin. Every original triangle is partitioned
@@ -240,7 +242,8 @@ internal sealed class WingDevices
         }
         foreach(Device d in devices)
         {
-            float fraction=d.spoiler?spoilers:Mathf.Clamp01(flapAngle/20f);
+            float fraction=d.spoiler?spoilers:d.leadingFlap?
+                BigWingPreset.LeadingEdgeExtension(flapAngle):BigWingPreset.SlatExtension(flapAngle);
             float direction=down.y<0f?-1f:1f;
             float angle=(d.spoiler?55f:d.leadingFlap?20f:12f)*fraction*direction;
             // Section-wise transforms preserve span position on swept wings.
@@ -260,9 +263,15 @@ internal sealed class WingDevices
         }
         // Stowed devices already meet exactly along the original shell. Internal
         // end caps would overlap there when only the spoilers switch this mesh on.
-        if(flapAngle<=.0001f) foreach(int[] cap in leadingCaps)
+        int capGroup=0;
+        foreach(int[] cap in leadingCaps)
+        {
+            bool stowed=(capGroup==3?BigWingPreset.LeadingEdgeExtension(flapAngle):BigWingPreset.SlatExtension(flapAngle))<=.0001f;
+            capGroup++;
+            if(!stowed) continue;
             for(int i=cap[0];i<cap[1];i+=3)
                 mesh.positions[i+1]=mesh.positions[i+2]=mesh.positions[i];
+        }
     }
     Vector3 Hinge(Device d,float z)
     {
