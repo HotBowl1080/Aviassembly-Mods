@@ -7,7 +7,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-[BepInPlugin("com.andrewstack.aviassembly.flaps", "Aviassembly Flaps", "0.7.1")]
+[BepInPlugin("com.andrewstack.aviassembly.flaps", "Aviassembly Flaps", "0.7.2")]
 public class FlapsPlugin : BaseUnityPlugin
 {
     internal static int stage { get; private set; }
@@ -279,7 +279,7 @@ public static class FlapPhysics
         if (speed < 0.1f) return;
         float fraction = BigWingPreset.Angle(FlapsPlugin.stage) / 30f;
         float strength = speed * speed * __instance.GetWingArea() * __instance.liftForce * __0.GravityMultiplier * __0.liftMultiplier;
-        float slatLift=.08f*Mathf.Clamp01(BigWingPreset.Angle(FlapsPlugin.stage)/20f);
+        float slatLift=.08f*BigWingPreset.SlatExtension(BigWingPreset.Angle(FlapsPlugin.stage));
         Vector3 lift = Vector3.ProjectOnPlane(__instance.rb.transform.up, velocity.normalized).normalized * strength * (.25f*fraction+slatLift)*(1f-.55f*spoiler);
         Vector3 drag = -velocity.normalized * strength * 0.18f * fraction;
         __instance.rb.AddForceAtPosition(lift + drag, __instance.orientation.position);
