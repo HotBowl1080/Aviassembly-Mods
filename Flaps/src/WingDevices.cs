@@ -351,11 +351,12 @@ internal sealed class WingDevices
             d.openPositions.Add(id,point);d.openNormals.Add(id,normal.normalized);
         }
     }
-    // The outer Krueger skin bows FORWARD, with its nose turning down
-    // and back. The support webs stay behind this convex front face.
+    // Restore the v0.13 scoop exactly, reflected chordwise about its
+    // attachment. Only the fore/aft direction changes; depth and roundness
+    // are identical, and the existing two panels and rib webs are retained.
     static Vector2 KruegerProfile(float t,out Vector2 tangent)
     {
-        Vector2 control=new Vector2(.245f,-.025f),end=new Vector2(.180f,-.150f);
+        Vector2 control=new Vector2(-.105f,-.200f),end=new Vector2(-.225f,-.040f);
         tangent=control*(2f*(1f-t))+(end-control)*(2f*t);
         return control*(2f*(1f-t)*t)+end*(t*t);
     }
