@@ -30,6 +30,24 @@ namespace Aviassembly.EditorTools
         private float nextUIAttempt;
         private int shortcutFrame = -1;
         private bool disposed;
+        private readonly HiddenXray xray = new HiddenXray();
+        private readonly List<Renderer> xrayRenderers = new List<Renderer>();
+        public bool XrayEnabled { get; private set; } = true;
+        internal int XrayDrawCount => xray.DrawCount;
+        internal bool WasVisible(Renderer renderer)
+        {
+            var owner = renderer != null ? renderer.GetComponentInParent<BuildingPart>() : null;
+            return owner != null && hidden.TryGetValue(owner, out var entry) && entry.Renderers.TryGetValue(renderer, out var visible) ? visible : renderer != null && renderer.enabled;
+        }
+        public void ToggleXray() { if (CanInteract) { XrayEnabled = !XrayEnabled; RefreshXray(); RefreshUI(); } }
+        internal void RefreshXray()
+        {
+            xrayRenderers.Clear();
+            foreach (var entry in hidden.Values)
+                foreach (var pair in entry.Renderers)
+                    if (pair.Value && pair.Key != null) xrayRenderers.Add(pair.Key);
+            xray.Render(BuildingCamera.cam, xrayRenderers, XrayEnabled && InEditor && !GameManager.Instance.inMenu);
+        }
         private static HideParts current;
         private static readonly MethodInfo SetSelected = AccessTools.PropertySetter(typeof(PartPlacer), "currentSelectedPart");
 
@@ -98,6 +116,7 @@ namespace Aviassembly.EditorTools
             foreach (var entry in hidden.Values)
                 foreach (var pair in entry.Renderers)
                     if (pair.Key != null) pair.Key.enabled = false;
+            RefreshXray();
             if (pollShortcut && CanInteract && Application.isFocused && Time.frameCount != shortcutFrame)
             {
                 if (Input.GetKeyDown(KeyCode.I)) { shortcutFrame = Time.frameCount; HandleShortcut(KeyCode.I); }
@@ -153,6 +172,7 @@ namespace Aviassembly.EditorTools
                 procedural.currentGizmoMode = (GizmoMode)0;
             }
             RefreshUI();
+            RefreshXray();
             return true;
         }
 
@@ -168,6 +188,7 @@ namespace Aviassembly.EditorTools
                 foreach (var pair in entry.Renderers)
                     if (pair.Key != null) pair.Key.enabled = pair.Value;
             hidden.Clear();
+            xray.Clear();
         }
 
         public void ShowAllFromUI() { if (CanInteract) { ShowAll(); RefreshUI(); } }
@@ -310,6 +331,7 @@ namespace Aviassembly.EditorTools
         {
             if (disposed) return;
             ShowAll();
+            xray.Dispose();
             ui?.Dispose();
             ui = null;
             UnregisterPatches();

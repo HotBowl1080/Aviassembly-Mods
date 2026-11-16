@@ -40,6 +40,8 @@ namespace Aviassembly.EditorTools
                 label.text = "<b>EDITOR SHORTCUTS</b>                 <color=#AFC5FF>K or Esc to close</color>\n\n" +
                     focusKey + "    Focused / Unfocused camera\n" +
                     "V    Hide selected part       I    Show all hidden parts\n\n" +
+                    "Toolbar: X-ray On/Off    Ghost hidden parts; still click-through\n" +
+                    "Toolbar: Prop Check On/Off    Selected propeller sweep and gap\n\n" +
                     "<b>MOVE & ROTATE</b>\n" +
                     "Drag an arrow or ring    Move or rotate on that handle\n" +
                     "G    Move selected part       R    Rotate selected part\n" +

@@ -166,6 +166,32 @@ PASS Shortcuts: complete shortcut text fits native canvas
 PASS Shortcuts: second K closes and releases input
 PASS Shortcuts: Escape closes and restores editor interaction
 PASS Shortcuts: native modal prevents opening help
+PASS Prop: native-radius sweep detects an intersecting aircraft collider count=1 probe=Center: (100.30, 100.00, 100.00), Extents: (0.00, 0.00, 0.00) convex=True obstacle=Center: (100.30, 101.00, 100.00), Extents: (0.50, 0.50, 0.50) mesh=Center: (0.00, 0.00, 0.00), Extents: (0.01, 2.00, 2.00) pos=(100.30, 100.00, 100.00)
+PASS Prop: query collider disabled between checks and outside aircraft hierarchy
+PASS Prop: repeated queries retain the same obstruction
+PASS Prop: obstruction highlights leave native materials untouched
+PASS Prop: overlay uses native rotor position and rotation axis
+PASS Prop: axial gap reports estimated metres without calling it exact
+PASS Prop: moving clear removes stale obstruction highlights
+PASS Prop: near blade tip warns without a false intersection
+PASS Prop: helicopter rotors excluded
+PASS Prop: ordinary parts never receive clearance readout
+PASS Prop: attached child parts still count as obstructions
+PASS Prop: own engine housing is excluded
+PASS X-ray: hidden mesh receives ghost draw commands by default
+PASS X-ray: ghost preserves original materials, hidden renderer state and physics
+PASS Prop: hidden parts still obstruct the sweep
+PASS X-ray: ghost remains excluded from editor picking
+PASS X-ray: Off fully hides visuals without revealing parts
+PASS X-ray: On restores ghost view
+PASS X-ray: show all removes ghosts and restores original appearance
+PASS Prop: gap queries support non-convex aircraft mesh colliders
+PASS Prop: sweep detects non-convex mesh obstruction
+PASS Prop: rotated mirrored and resized sweep remains aligned
+PASS Prop: toolbar disables inspection
+PASS Prop: toolbar re-enables inspection
+PASS Inspection: flight restores hidden visuals and removes both overlays
+PASS Prop: installed Building assets contain supported native propeller definitions (6)
 PASS Combined: production Plugin owns both modules
 PASS Combined: V hides a selected placed part through production module
 PASS Combined: hide leaves physics activation and position unchanged
@@ -203,11 +229,17 @@ PASS Pointer: Hide completes a full press and release
 PASS Pointer: Show All stays enabled while held down
 PASS Pointer: Show All press blocks aircraft picking
 PASS Pointer: Show All completes a full press and release
+PASS Pointer: X-ray stays enabled while held down
+PASS Pointer: X-ray press blocks aircraft picking
+PASS Pointer: X-ray toggle completes full press and release
+PASS Pointer: Prop Check stays enabled while held down
+PASS Pointer: Prop Check press blocks aircraft picking
+PASS Pointer: Prop Check toggle completes full press and release
 PASS Combined: former H shortcut has no action
 PASS Combined: final I restores original renderer state
 PASS Combined layout: all four native bottom controls forced visible
 PASS Combined layout: native CG and Drag controls located CG=(x:1250.59, y:14.26, width:97.24, height:38.69) Drag=(x:1362.09, y:14.26, width:146.43, height:38.69)
 PASS Combined layout: every toolbar control inside screen 1904x984; maxX=892.73
-PASS Combined layout: toolbar clears right CG/Drag controls; maxX=892.73 CG=(x:1250.59, y:14.26, width:97.24, height:38.69) Drag=(x:1362.09, y:14.26, width:146.43, height:38.69) Snapping=(x:14.25, y:13.99, width:213.87, height:39.21) Undo=(x:242.38, y:13.99, width:41.28, height:39.21) Mirror=(x:297.91, y:13.99, width:156.43, height:39.21) RotationSnap=(x:468.60, y:13.99, width:224.51, height:39.21) EditorTools Hide Part=(x:14.25, y:62.28, width:128.32, height:39.21) EditorTools Show Parts=(x:156.83, y:62.28, width:178.23, height:39.21) EditorTools Camera Mode=(x:707.37, y:13.99, width:185.35, height:39.21)
+PASS Combined layout: toolbar clears right CG/Drag controls; maxX=892.73 CG=(x:1250.59, y:14.26, width:97.24, height:38.69) Drag=(x:1362.09, y:14.26, width:146.43, height:38.69) Snapping=(x:14.25, y:13.99, width:213.87, height:39.21) Undo=(x:242.38, y:13.99, width:41.28, height:39.21) Mirror=(x:297.91, y:13.99, width:156.43, height:39.21) RotationSnap=(x:468.60, y:13.99, width:224.51, height:39.21) EditorTools Hide Part=(x:14.25, y:62.28, width:128.32, height:39.21) EditorTools Show Parts=(x:156.83, y:62.28, width:178.23, height:39.21) EditorTools X-ray=(x:349.31, y:62.28, width:117.63, height:39.21) EditorTools Prop Check=(x:481.20, y:62.28, width:149.71, height:39.21) EditorTools Camera Mode=(x:707.37, y:13.99, width:185.35, height:39.21)
 PASS Combined layout: all native and custom toolbar controls avoid each other
-RESULT 212 passed, 0 failed
+RESULT 244 passed, 0 failed

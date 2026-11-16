@@ -132,6 +132,7 @@ public static class UnityHidePartsIntegrationTests
                     InputSystem.QueueStateEvent(Mouse.current, new MouseState { position = point, buttons = 1 }); InputSystem.Update();
                     ExecuteEvents.Execute(button.gameObject, data, ExecuteEvents.pointerDownHandler);
                     hide.Observe(placer, false); hide.RefreshUI();
+                    plugin.Clearance?.Tick(placer, true);
                     check(button.IsInteractable(), "Pointer: " + label + " stays enabled while held down");
                     check(plugin.BlockPanelClick, "Pointer: " + label + " press blocks aircraft picking");
                     InputSystem.QueueStateEvent(Mouse.current, new MouseState { position = point }); InputSystem.Update();
@@ -143,6 +144,14 @@ public static class UnityHidePartsIntegrationTests
                 hide.RefreshUI();
                 PointerClick(Get<Button>(ui, "showButton"), "Show All");
                 check(hide.HiddenCount == 0 && renderer.enabled, "Pointer: Show All completes a full press and release");
+                bool xrayBefore = hide.XrayEnabled;
+                PointerClick(Get<Button>(ui, "xrayButton"), "X-ray");
+                check(hide.XrayEnabled != xrayBefore, "Pointer: X-ray toggle completes full press and release");
+                hide.ToggleXray();
+                bool propsBefore = plugin.Clearance.Enabled;
+                PointerClick(Get<Button>(plugin.Clearance, "button"), "Prop Check");
+                check(plugin.Clearance.Enabled != propsBefore, "Pointer: Prop Check toggle completes full press and release");
+                plugin.Clearance.Toggle();
                 InputSystem.QueueStateEvent(Mouse.current, new MouseState()); InputSystem.Update();
             }
             check(!hide.HandleShortcut(KeyCode.H), "Combined: former H shortcut has no action");
@@ -198,6 +207,8 @@ public static class UnityHidePartsIntegrationTests
                 break;
             }
             Add(Get<GameObject>(ui, "hideRoot")); Add(Get<GameObject>(ui, "showRoot"));
+            Add(Get<GameObject>(ui, "xrayRoot"));
+            if (plugin.Clearance != null) Add(Get<GameObject>(plugin.Clearance, "buttonRoot"));
             var focus = Get<object>(plugin, "focusUI");
             if (focus != null) Add(Get<GameObject>(focus, "root"));
             Canvas.ForceUpdateCanvases();

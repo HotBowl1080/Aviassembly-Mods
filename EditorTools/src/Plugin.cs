@@ -15,7 +15,7 @@ namespace Aviassembly.EditorTools
     public sealed class Plugin : BaseUnityPlugin
     {
         public const string Id = "rylan.aviassembly.editortools";
-        public const string Version = "0.5.1";
+        public const string Version = "0.6.0";
         internal static Plugin Instance;
         private Harmony harmony;
         private ConfigEntry<KeyCode> focusKey;
@@ -42,6 +42,7 @@ namespace Aviassembly.EditorTools
         private float nextUIAttempt;
         internal PrecisionController Precision { get; private set; }
         internal HideParts HideParts { get; private set; }
+        internal PropClearance Clearance { get; private set; }
         private BuildingPart placementTarget;
         private readonly DragProjection placementProjection = new DragProjection();
         internal Camera PlacementInputCamera => placementTarget != null && placer != null && placer.currentMovingPart == placementTarget
@@ -74,6 +75,7 @@ namespace Aviassembly.EditorTools
                 harmony.PatchAll(typeof(Plugin).Assembly);
                 HideParts = new HideParts(() => Precision?.BlockGameInput == true || TextEntryActive || ShortcutsOpen);
                 HideParts.RegisterPatches(new Harmony(Id + ".hideparts"));
+                Clearance = new PropClearance(this);
                 Logger.LogInfo("Editor Tools " + Version + " ready. Click arrows/rings and type; G move; R rotate; F focus; V hide; I show all.");
             }
             catch (Exception ex)
@@ -235,6 +237,7 @@ namespace Aviassembly.EditorTools
             if (InEditor && (Precision.UI == null || !Precision.UI.IsAlive)) Precision.UI = PrecisionUI.TryCreate(Precision);
             Precision.UI?.Refresh(PrecisionContextValid, selected, Precision.CanStart);
             HideParts?.RefreshUI();
+            Clearance?.Tick(placer);
             UpdateFollowingCamera();
         }
 
@@ -360,12 +363,13 @@ namespace Aviassembly.EditorTools
         internal bool OwnsOrigin(BuildingCamera source) => HasEditor && source == cameraController && (anchored || transitioning);
 
         internal bool BlockPanelClick => ShortcutsOpen || Precision?.BlockGameInput == true || TextEntryActive ||
-            ((PointerOverPanel() || PointerOverToolUI()) &&
+            ((PointerOverPanel() || PointerOverToolUI() || PointerOverClearanceUI()) &&
                 placer != null && placer.currentMovingPart == null && !NativeHandleDragging());
 
         internal bool PointerOverToolUI() => Mouse.current != null &&
             ((Precision?.UI?.Contains(Mouse.current.position.ReadValue()) ?? false) ||
              (HideParts?.PointerOverUI(Mouse.current.position.ReadValue()) ?? false));
+        internal bool PointerOverClearanceUI() => Mouse.current != null && (Clearance?.Contains(Mouse.current.position.ReadValue()) ?? false);
 
         internal bool PointerOverPanel()
         {
@@ -375,11 +379,12 @@ namespace Aviassembly.EditorTools
             return focusUI != null && focusUI.Contains(mouse.position.ReadValue());
         }
 
-        private void OnDisable() { shortcutsUI?.Dispose(); placementProjection.Dispose(); HideParts?.Dispose(); Precision?.Dispose(); ResetFocus(); focusUI?.Dispose(); focusUI = null; }
+        private void OnDisable() { Clearance?.Dispose(); shortcutsUI?.Dispose(); placementProjection.Dispose(); HideParts?.Dispose(); Precision?.Dispose(); ResetFocus(); focusUI?.Dispose(); focusUI = null; }
         private void OnDestroy()
         {
             ResetFocus();
             shortcutsUI?.Dispose();
+            Clearance?.Dispose();
             placementProjection.Dispose();
             HideParts?.Dispose();
             Precision?.Dispose();
@@ -464,7 +469,7 @@ namespace Aviassembly.EditorTools
         private static void Postfix(ref bool __result)
         {
             if (Plugin.Instance != null && (Plugin.Instance.ShortcutsOpen || Plugin.Instance.PointerOverPanel() || Plugin.Instance.Precision?.BlockGameInput == true ||
-                Plugin.Instance.PointerOverToolUI())) __result = true;
+                Plugin.Instance.PointerOverToolUI() || Plugin.Instance.PointerOverClearanceUI())) __result = true;
         }
     }
 

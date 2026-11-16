@@ -1,6 +1,6 @@
-# Aviassembly Editor Tools 0.5.1
+# Aviassembly Editor Tools 0.6.0
 
-Focus Selected, Precision Edit, and Hide Parts are included in one plugin
+Focus Selected, Precision Edit, Hide Parts with X-ray, and propeller clearance are included in one plugin
 
 The readout is a prominent bold text line below the top-right controls, with a black outline and no background box: Direction (X): 0.35 m or Rotation (Z): 33.5 degrees
 
@@ -30,6 +30,8 @@ Hide and Show All use a matching row above the native toolbar, leaving the game'
 | Cancel active transform | Escape or right click |
 | Hide selected part | V or crossed-eye Hide button |
 | Restore every hidden part | I or open-eye Show All button |
+| Ghost view for hidden parts | X-ray On/Off toolbar button |
+| Selected propeller clearance | Prop Check On/Off toolbar button |
 
 Controls are guarded during text entry, blocking menus, placement, and other exclusive operations
 
@@ -75,11 +77,29 @@ This implements the listed Blender move and rotate interactions; it does not rep
 
 V hides the selected part's own visuals and decals so you can click visible parts behind it; attached and nested parts stay visible unless separately hidden
 
+Hidden parts default to a faint blue X-ray view through surrounding geometry; they remain excluded from selection, paint, and decal picking so you can edit inside the aircraft; X-ray Off removes the ghost view without restoring those parts
+
+The overlay draws existing geometry with a separate material and never replaces original materials; renderers that were already disabled before hiding stay absent; I removes all ghosts and restores each original renderer state
+
 I restores every part hidden by this mod; Show All displays the count and has an open-eye icon, while Hide has a crossed-eye icon
 
 Hiding preserves colliders, layers, transforms, attachment lists, money, saves, and undo history; only editor picking and highlights ignore hidden geometry
 
 Original renderer states are restored exactly; leaving the editor, entering flight, changing aircraft, and unloading the mod restore hidden objects automatically
+
+## Propeller clearance
+
+Select or place a propeller engine to see its swept perimeter and clearance readout; ordinary parts, jet engines without a native propeller, and helicopter rotors do not receive the overlay; Prop Check toggles this inspection and is on by default
+
+The sweep uses the installed game's RotorCollider center, radius, local axis, scale, and orientation; overlapping aircraft parts receive a red overlay and the sweep turns red, while estimated gaps below 0.1 m turn the ring amber
+
+Hidden parts still count as obstructions; the engine's own geometry is excluded, while independently attached child parts are checked; editor mode, camera, selection, placement, and save data are not changed by checking
+
+This is an inspection aid, not a guarantee of flight clearance; a 48-sided convex sweep has a 0.01 m margin on each side of the rotation plane and slightly conservatively encloses the native radius; non-convex meshes additionally receive 192 radial checks in both directions
+
+The gap is explicitly approximate: samples cover six radial bands and the center, non-convex meshes use conservative bounds for distance, and the readout stops at greater than 2 m; collision geometry can differ from visible geometry, and very thin or fully enclosing non-convex geometry may need visual inspection
+
+Checks update up to ten times per second for the selected propeller; the query collider sits outside the aircraft and is enabled only during synchronous collision queries, with no physics simulation or input handling between enable and disable; it is never saved or left active between frames
 
 ## Build and install
 
@@ -114,14 +134,16 @@ The runner uses a separate disposable game copy under .work\UnityTestHost, suppr
 
 The standalone Hide Parts worker used a different isolated host; its 60 passing checks are recorded in tests\hide-parts-standalone-results.txt
 
-The combined build passes 212 checks with zero failures and compiles with zero warnings or errors; the report is tests\runtime-results.txt
+The combined build passes 244 checks with zero failures and compiles with zero warnings or errors; the report is tests\runtime-results.txt
 
 Coverage includes camera modes with no selection, focus after new placement, no automatic focus or following during movement, stable native placement rays, manual F overrides during transforms, outlined and lowered readout geometry without a background, K menu input blocking and dismissal, exact numeric and mouse transforms, snapping, mirrors, attached parts, cancellation, save isolation, undo snapshots, typing during and after drag, complete Hide/Show All pointer press and release, V/I routing, text focus, and toolbar bounds at 1904 by 984
 
 These are headless runtime fixtures, not a visual playtest of the complete editor or physical keyboard testing; native undo snapshots are checked without exercising the complete aircraft reload path of an actual Undo
 
+Inspection coverage includes native propeller discovery, repeated overlap queries, approximate axial and tip gaps, non-convex colliders, mirrored and resized props, hidden and attached obstructions, original material preservation, X-ray draw-command cleanup, both new toolbar buttons through pointer press/release, and flight cleanup; the actual X-ray appearance still requires a visual playtest
+
 ## Independent module task
 
-Hide_Parts_Task_Prompt.txt contains the separate worker prompt updated with V, I, and both icons; reusable module sources are src\HideParts.cs and src\HidePartsUI.cs
+Hide_Parts_Task_Prompt.txt contains the original separate worker prompt; reusable hiding sources now also require src\HiddenXray.cs and src\EditorToolRow.cs alongside src\HideParts.cs and src\HidePartsUI.cs
 
 No game binaries or copied native assets are included

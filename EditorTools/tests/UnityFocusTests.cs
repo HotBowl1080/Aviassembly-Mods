@@ -336,6 +336,7 @@ public sealed class UnityFocusTests : BaseUnityPlugin
         UnityPrecisionTests.Run(plugin, placer, plane, part, Check);
         UnityHandleTests.Run(plugin, placer, part, Check);
         TestShortcuts(plugin, placer);
+        UnityInspectionTests.Run(plugin, placer, plane, Check);
         UnityHidePartsIntegrationTests.Run(plugin, placer, plane, part, Check);
     }
 
