@@ -1,180 +1,154 @@
 using System;
 using HarmonyLib;
-using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 [HarmonyPatch(typeof(SpeedDial), "Start")]
 internal static class AttachFlapInstrument
 {
-    static void Postfix(SpeedDial __instance)
+    static void Postfix(SpeedDial dial)
     {
-        if (!__instance.GetComponent<FlapInstrument>())
-            __instance.gameObject.AddComponent<FlapInstrument>().Attach(__instance);
+        if (!dial.GetComponent<FlapInstrument>())
+            dial.gameObject.AddComponent<FlapInstrument>().Attach(dial);
     }
 }
 
-// Layout units are in the native 274-unit airspeed dial's coordinate system.
 public sealed class FlapInstrument : MonoBehaviour
 {
-    internal const float Width=80f, Height=216f, Gap=14f;
-    internal const float RowHeight=41f, FirstRowTop=35f;
+    internal const float Width = 72f, Height = 274f, Gap = 30f, EndInset = 34f;
     SpeedDial dial;
     RectTransform face;
     FlapInstrumentPlate plate;
-    int displayed=-1;
-    internal void Attach(SpeedDial speedDial)
-    {
-        dial=speedDial;
-        FlapsPlugin.flightUI=dial.GetComponentInParent<FlyingUIController>();
-    }
+    float handleStage, velocity;
 
-    static RectTransform Child(RectTransform parent,string name)
+    internal void Attach(SpeedDial value)
     {
-        var obj=new GameObject(name,typeof(RectTransform));
-        var rect=(RectTransform)obj.transform;
-        rect.SetParent(parent,false);
-        return rect;
-    }
-
-    static void Fit(RectTransform child, float top, float height, float inset)
-    {
-        child.anchorMin=new Vector2(0f,1f);
-        child.anchorMax=Vector2.one;
-        child.pivot=new Vector2(.5f,1f);
-        child.anchoredPosition=new Vector2(0f,-top);
-        child.sizeDelta=new Vector2(-2f*inset,height);
-    }
-
-    static void Caption(RectTransform rect,string text,float size,TMP_Text example,bool heading)
-    {
-        TextMeshProUGUI label=rect.gameObject.AddComponent<TextMeshProUGUI>();
-        if (example && example.font) label.font=example.font;
-        label.alignment=TextAlignmentOptions.Midline;
-        label.fontStyle=heading ? FontStyles.Bold : FontStyles.Normal;
-        label.fontSize=size;
-        label.color=heading ? new Color32(83,83,83,255) : new Color32(41,41,41,255);
-        label.text=text;
-        label.raycastTarget=false;
+        dial = value;
+        FlapsPlugin.flightUI = dial.GetComponentInParent<FlyingUIController>();
     }
 
     void Build()
     {
-        var dialRect=(RectTransform)dial.transform;
-        face=Child(dialRect,"Flap selector");
-        face.anchorMin=face.anchorMax=new Vector2(0f,.5f);
-        face.pivot=new Vector2(1f,.5f);
-        face.anchoredPosition=new Vector2(-Gap,0f);
-        face.sizeDelta=new Vector2(Width,Height);
-        plate=face.gameObject.AddComponent<FlapInstrumentPlate>();
-        plate.raycastTarget=false;
-
-        var nativeLabel=dialRect.Find("Labels");
-        TMP_Text heading=nativeLabel ? nativeLabel.GetComponent<TMP_Text>() : dial.knotsMeter;
-        var nativeNumber=dialRect.Find("Speed");
-        TMP_Text digits=nativeNumber ? nativeNumber.GetComponent<TMP_Text>() : dial.knotsMeter;
-        var title=Child(face,"Title");
-        Fit(title,5f,28f,4f);
-        Caption(title,"FLAPS",17.5f,heading,true);
-
-        for(int stage=0;stage<4;stage++)
-        {
-            int selected=stage;
-            var row=Child(face,"Flaps "+stage*10);
-            Fit(row,FirstRowTop+stage*RowHeight,RowHeight,6f);
-            var hit=row.gameObject.AddComponent<Image>();
-            hit.color=Color.white;
-            var button=row.gameObject.AddComponent<Button>();
-            button.targetGraphic=hit;
-            var colors=ColorBlock.defaultColorBlock;
-            colors.normalColor=colors.selectedColor=Color.clear;
-            colors.highlightedColor=new Color(1,1,1,.18f);
-            colors.pressedColor=new Color(0,0,0,.10f);
-            colors.fadeDuration=.06f;
-            button.colors=colors;
-            hit.canvasRenderer.SetColor(Color.clear);
-            var navigation=button.navigation;
-            navigation.mode=Navigation.Mode.None;
-            button.navigation=navigation;
-            button.onClick.AddListener(delegate { FlapsPlugin.SelectStage(selected); Sync(); });
-            var number=Child(row,"Degrees");
-            Fit(number,0f,RowHeight,2f);
-            Caption(number,(stage*10).ToString()+"�",22f,digits,false);
-        }
-    }
-
-    void Sync()
-    {
-        if (displayed==FlapsPlugin.stage) return;
-        displayed=FlapsPlugin.stage;
-        plate.SetSelection(displayed);
+        var obj = new GameObject("Flap lever", typeof(RectTransform), typeof(FlapInstrumentPlate), typeof(FlapLeverInput));
+        face = (RectTransform)obj.transform;
+        face.SetParent(dial.transform, false);
+        face.anchorMin = face.anchorMax = new Vector2(0f, .5f);
+        face.pivot = new Vector2(1f, .5f);
+        face.anchoredPosition = new Vector2(-Gap, 0f);
+        face.sizeDelta = new Vector2(Width, Height);
+        plate = obj.GetComponent<FlapInstrumentPlate>();
+        handleStage = FlapsPlugin.stage;
+        plate.SetPosition(handleStage);
     }
 
     void LateUpdate()
     {
         if (!dial) return;
-        bool visible=FlapsPlugin.ShowSelector;
+        bool visible = FlapsPlugin.ShowSelector;
         if (visible && !face) Build();
         if (!face) return;
-        if (face.gameObject.activeSelf!=visible) face.gameObject.SetActive(visible);
-        if (visible) Sync();
+        if (face.gameObject.activeSelf != visible) face.gameObject.SetActive(visible);
+        if (!visible) return;
+        float next = Mathf.SmoothDamp(handleStage, FlapsPlugin.stage, ref velocity, .16f, 12f, Time.unscaledDeltaTime);
+        if (Mathf.Abs(next - FlapsPlugin.stage) < .0005f) { next = FlapsPlugin.stage; velocity = 0f; }
+        if (next != handleStage) { handleStage = next; plate.SetPosition(next); }
     }
-    void OnDisable() { if(face) face.gameObject.SetActive(false); }
-    void OnDestroy() { if(face) Destroy(face.gameObject); }
+
+    void OnDisable() { if (face) face.gameObject.SetActive(false); }
+    void OnDestroy() { if (face) Destroy(face.gameObject); }
 }
 
-// The scale, bezel and orange detent are one canvas graphic. Only a new command
-// or layout change rebuilds its mesh. Buttons on top handle normal HUD clicks.
+public sealed class FlapLeverInput : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, IDragHandler
+{
+    internal static int StageAt(float y, Rect rect)
+    {
+        float top = rect.yMax - FlapInstrument.EndInset;
+        float bottom = rect.yMin + FlapInstrument.EndInset;
+        return Mathf.Clamp(Mathf.RoundToInt(Mathf.Clamp01((top - y) / (top - bottom)) * 3f), 0, 3);
+    }
+
+    void Select(PointerEventData pointer)
+    {
+        if (pointer.button != PointerEventData.InputButton.Left) return;
+        var rect = (RectTransform)transform;
+        Vector2 local;
+        if (RectTransformUtility.ScreenPointToLocalPointInRectangle(rect, pointer.position, pointer.pressEventCamera, out local))
+            FlapsPlugin.SelectStage(StageAt(local.y, rect.rect));
+    }
+    public void OnPointerDown(PointerEventData pointer) { Select(pointer); }
+    public void OnBeginDrag(PointerEventData pointer) { Select(pointer); }
+    public void OnDrag(PointerEventData pointer) { Select(pointer); }
+}
+
 public sealed class FlapInstrumentPlate : MaskableGraphic
 {
-    int selection;
-    internal void SetSelection(int stage)
-    {
-        selection=stage;
-        SetVerticesDirty();
-    }
+    float position;
+    internal void SetPosition(float stage) { position = stage; SetVerticesDirty(); }
+    protected override void OnPopulateMesh(VertexHelper mesh) { Paint(mesh, rectTransform.rect, position); }
 
-    protected override void OnPopulateMesh(VertexHelper mesh)
-    {
-        Paint(mesh,rectTransform.rect,selection);
-    }
-
-    internal static void Paint(VertexHelper mesh, Rect rect,int stage)
+    internal static void Paint(VertexHelper mesh, Rect rect, float stage)
     {
         mesh.Clear();
-        float x=rect.xMin, y=rect.yMin, w=rect.width, h=rect.height;
-        Rounded(mesh,x,y-1.5f,w,h,8,new Color32(40,39,42,165));
-        Rounded(mesh,x,y,w,h,8,new Color32(250,250,248,255));
-        Rounded(mesh,x+3.8f,y+3.8f,w-7.6f,h-7.6f,4.5f,new Color32(149,149,149,255));
-        Rounded(mesh,x+6f,y+6f,w-12f,h-12f,2.5f,new Color32(197,197,197,255));
-        Rounded(mesh,x+9f,rect.yMax-34f,w-18f,1.6f,.7f,new Color32(163,163,163,255));
-        for(int i=0;i<4;i++)
+        float x = rect.xMin, y = rect.yMin, w = rect.width, h = rect.height;
+        Rounded(mesh,x+1.5f,y-2f,w,h,18f,new Color32(25,24,30,110));
+        Rounded(mesh,x,y,w,h,18f,new Color32(252,252,250,255));
+        Rounded(mesh,x+3f,y+3f,w-6f,h-6f,15f,new Color32(162,162,160,255));
+        Rounded(mesh,x+6f,y+6f,w-12f,h-12f,12f,new Color32(197,197,195,255));
+        Rounded(mesh,x+8f,y+8f,w-16f,h-16f,10f,new Color32(207,207,205,255));
+        float top = rect.yMax - FlapInstrument.EndInset, bottom = rect.yMin + FlapInstrument.EndInset;
+        for (int i = 0; i < 4; i++)
         {
-            float cy=rect.yMax-FlapInstrument.FirstRowTop-(i+.5f)*FlapInstrument.RowHeight;
-            if(i==stage)
-                Rounded(mesh,x+6f,cy-13.5f,w-12f,27f,2f,new Color32(248,170,68,255));
-            Color32 tick=i==stage ? new Color32(133,88,35,255) : new Color32(144,144,144,255);
-            Rounded(mesh,x+6f,cy-2f,6f,4f,1f,tick);
-            Rounded(mesh,rect.xMax-12f,cy-2f,6f,4f,1f,tick);
+            float notchY = Mathf.Lerp(top,bottom,i/3f);
+            Rounded(mesh,rect.center.x-21f,notchY-4.3f,42f,8.6f,4.3f,new Color32(15,15,15,255));
         }
+        Rounded(mesh,rect.center.x-4.8f,bottom-7f,9.6f,top-bottom+14f,4.8f,new Color32(77,77,75,255));
+        Rounded(mesh,rect.center.x-2.7f,bottom-5f,3f,top-bottom+10f,1.5f,new Color32(121,121,117,255));
+        float handleY = Mathf.Lerp(top,bottom,Mathf.Clamp(stage,0f,3f)/3f);
+        Ball(mesh,new Vector2(rect.center.x+1.8f,handleY-2.2f),16.4f,true);
+        Ball(mesh,new Vector2(rect.center.x,handleY),15f,false);
     }
-    static void Rounded(VertexHelper mesh,float x,float y,float width,float height,float radius,Color32 ink)
+
+    static void Ball(VertexHelper mesh, Vector2 center, float radius, bool shadow)
     {
-        int middle=mesh.currentVertCount;
-        mesh.AddVert(new Vector3(x+width*.5f,y+height*.5f),ink,Vector2.zero);
-        const int pointsPerCorner=5, perimeter=4*pointsPerCorner;
-        for(int corner=0;corner<4;corner++)
+        const int segments = 48, rings = 8;
+        int start = mesh.currentVertCount;
+        for (int r = 0; r <= rings; r++)
         {
-            float cx=(corner==0 || corner==3) ? x+width-radius : x+radius;
-            float cy=corner<2 ? y+height-radius : y+radius;
-            for(int k=0;k<pointsPerCorner;k++)
+            float radial = r/(float)rings;
+            for (int i = 0; i < segments; i++)
             {
-                double angle=(corner+k/(pointsPerCorner-1.0))*Math.PI*.5;
-                mesh.AddVert(new Vector3(cx+radius*(float)Math.Cos(angle),cy+radius*(float)Math.Sin(angle)),ink,Vector2.zero);
+                double a = i*2.0*Math.PI/segments;
+                float dx = radial*(float)Math.Cos(a), dy = radial*(float)Math.Sin(a);
+                float light = Mathf.Clamp01(.63f+.25f*(float)Math.Sqrt(Math.Max(0,1f-radial*radial))-.17f*dx+.17f*dy);
+                byte gray = (byte)(light*255f);
+                Color32 ink = shadow ? new Color32(20,20,20,(byte)(r==rings?0:90)) :
+                    new Color32(gray,gray,(byte)Math.Max(0,gray-2),(byte)(r==rings?0:255));
+                mesh.AddVert(center+new Vector2(dx,dy)*radius,ink,Vector2.zero);
+                if (r == 0) continue;
+                int here = start+r*segments+i, next = start+r*segments+(i+1)%segments;
+                mesh.AddTriangle(here-segments,next,here);
+                mesh.AddTriangle(here-segments,next-segments,next);
             }
         }
-        for(int p=0;p<perimeter;p++) mesh.AddTriangle(middle,middle+1+(p+1)%perimeter,middle+1+p);
+    }
+
+    static void Rounded(VertexHelper mesh,float x,float y,float width,float height,float radius,Color32 ink)
+    {
+        int middle = mesh.currentVertCount;
+        mesh.AddVert(new Vector3(x+width*.5f,y+height*.5f),ink,Vector2.zero);
+        const int pointsPerCorner = 8, perimeter = 4*pointsPerCorner;
+        for (int corner = 0; corner < 4; corner++)
+        {
+            float cx = (corner==0||corner==3)?x+width-radius:x+radius;
+            float cy = corner<2?y+height-radius:y+radius;
+            for (int k = 0; k < pointsPerCorner; k++)
+            {
+                double a = (corner+k/(pointsPerCorner-1.0))*Math.PI*.5;
+                mesh.AddVert(new Vector3(cx+radius*(float)Math.Cos(a),cy+radius*(float)Math.Sin(a)),ink,Vector2.zero);
+            }
+        }
+        for (int p = 0; p < perimeter; p++)
+            mesh.AddTriangle(middle,middle+1+(p+1)%perimeter,middle+1+p);
     }
 }
-
-
