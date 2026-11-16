@@ -21,6 +21,7 @@ namespace Aviassembly.EditorTools
         private readonly HashSet<Transform> seen = new HashSet<Transform>();
         private readonly HashSet<BuildingPart> seenParts = new HashSet<BuildingPart>();
         internal TransformSnapshot(BuildingPart target, BuildingPart mirror) { AddPart(target); AddPart(mirror); }
+        internal TransformSnapshot(IEnumerable<BuildingPart> parts) { foreach (var part in parts) AddPart(part); }
         private void AddPart(BuildingPart part)
         {
             if (part == null || !seenParts.Add(part)) return;
@@ -67,6 +68,8 @@ namespace Aviassembly.EditorTools
         private TransformSnapshot original;
         private Vector3 previewPosition;
         private Quaternion mirrorStartRotation;
+        private GroupTransform group;
+        internal bool IsGroup => group != null;
         private static readonly MethodInfo Flush = AccessTools.Method(typeof(PlaneStorage), "ExecuteHistoryUpdate");
         internal bool Begin(PartPlacer source)
         {
@@ -78,6 +81,12 @@ namespace Aviassembly.EditorTools
             if (mirror == Target || (mirror != null && (Target.IsChild(mirror) || mirror.IsChild(Target)))) mirror = null;
             // Flush a pending native edit BEFORE any preview. Native history deduplicates.
             Flush.Invoke(PlaneStorage.Instance, null);
+            group = Plugin.Instance?.Selection?.IsGroup == true ? new GroupTransform(source, Plugin.Instance.Selection.Parts) : null;
+            if (group != null)
+            {
+                StartPosition = group.Pivot; StartRotation = Target.transform.rotation;
+                previewPosition = StartPosition; Active = true; Changed = false; return true;
+            }
             original = new TransformSnapshot(Target, mirror);
             mirrorStartRotation = mirror != null ? mirror.transform.rotation : Quaternion.identity;
             StartPosition = Target.transform.position;
@@ -91,6 +100,13 @@ namespace Aviassembly.EditorTools
             if (!Active || Target == null || !TransformMath.Finite(position) ||
                 !TransformMath.Finite(new Vector3(rotation.x, rotation.y, rotation.z)) || !TransformMath.Finite(rotation.w)) return;
             if (Target.lockRotation) rotation = StartRotation;
+            if (group != null)
+            {
+                group.Preview(position, rotation * Quaternion.Inverse(StartRotation));
+                previewPosition = position;
+                Changed = (position - StartPosition).sqrMagnitude > 0.0000000001f || Quaternion.Angle(rotation, StartRotation) > 0.00001f;
+                SyncGizmos(); return;
+            }
             original.Restore();
             Target.SetPositionAndRotation(position, rotation);
             bool rotationChanged = Quaternion.Angle(rotation, StartRotation) > 0.00001f;
@@ -113,6 +129,10 @@ namespace Aviassembly.EditorTools
             {
             // Attachment recalculation matches native movement and runs only at commit.
             Physics.SyncTransforms();
+            if (group != null)
+            {
+                group.Commit(); SyncGizmos(); Active = false; PlaneStorage.Instance.UpdateHistory(); group = null; return true;
+            }
             if ((previewPosition - StartPosition).sqrMagnitude > 0.0000000001f)
             {
                 placer.partContainer.UpdateAttachment(Target);
@@ -132,17 +152,20 @@ namespace Aviassembly.EditorTools
         {
             if (!Active) return;
             original?.Restore();
+            group?.Restore();
             Active = false; Changed = false;
             SyncGizmos();
             original = null;
+            group = null;
         }
         private void SyncGizmos()
         {
             if (Target == null || placer == null || placer.currentSelectedPart != Target) return;
-            if (placer.moveGizmo != null) placer.moveGizmo.transform.SetPositionAndRotation(Target.transform.position, Target.transform.rotation);
+            var pivot = group != null && Active ? previewPosition : Plugin.Instance?.Selection?.IsGroup == true ? Plugin.Instance.Selection.Pivot : Target.transform.position;
+            if (placer.moveGizmo != null) placer.moveGizmo.transform.SetPositionAndRotation(pivot, Target.transform.rotation);
             if (placer.rotationGizmo != null)
             {
-                placer.rotationGizmo.transform.SetPositionAndRotation(Target.transform.position, Target.transform.rotation);
+                placer.rotationGizmo.transform.SetPositionAndRotation(pivot, Target.transform.rotation);
                 placer.rotationGizmo.openRotation = Target.transform.rotation;
                 AccessTools.Field(typeof(RotationGizmo), "startRotation").SetValue(placer.rotationGizmo, Target.transform.rotation);
             }
@@ -150,6 +173,7 @@ namespace Aviassembly.EditorTools
         internal TransformSnapshot BeforeSave()
         {
             if (!Active) return null;
+            if (group != null) return group.BeforeSave();
             var preview = new TransformSnapshot(Target, mirror);
             original.Restore();
             return preview;
@@ -170,7 +194,7 @@ namespace Aviassembly.EditorTools
             yield return AccessTools.Method(typeof(PlaneStorage), "UpdateHistory");
             yield return AccessTools.Method(typeof(PlaneStorage), "ExecuteHistoryUpdate");
         }
-        private static bool Prefix() => Plugin.Instance?.Precision?.Session.Active != true;
+        private static bool Prefix() => Plugin.Instance?.Precision?.Session.Active != true && Plugin.Instance?.ShapeEditor?.Active != true;
     }
     [HarmonyPatch]
     internal static class PrecisionCancelBeforeMutationPatch
@@ -184,6 +208,6 @@ namespace Aviassembly.EditorTools
             yield return AccessTools.Method(typeof(GameManager), "StartMenu");
             yield return AccessTools.Method(typeof(PartPlacer), "DestroySelectedPart");
         }
-        private static void Prefix() { Plugin.Instance?.Precision?.Cancel(); }
+        private static void Prefix() { Plugin.Instance?.Precision?.Cancel(); Plugin.Instance?.ShapeEditor?.Cancel(); Plugin.Instance?.Selection?.Clear(false); }
     }
 }

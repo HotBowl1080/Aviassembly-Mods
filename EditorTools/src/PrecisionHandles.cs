@@ -31,6 +31,7 @@ namespace Aviassembly.EditorTools
         {
             get
             {
+                if (host.ShapeEditor != null && host.ShapeEditor.Readout.Length > 0) return host.ShapeEditor.Readout;
                 bool rotation = Session.Active ? Rotating : recent != null ? recent.rotation : toolHint == "Rotation";
                 int axis = Session.Active ? Axis : recent != null ? recent.axis : -1;
                 string axes = axis >= 0 ? "XYZ"[axis].ToString() : "X,Y,Z";
@@ -50,7 +51,7 @@ namespace Aviassembly.EditorTools
             }
         }
 
-        internal bool HasReadout => Session.Active || recent != null || toolHint != null;
+        internal bool HasReadout => Session.Active || recent != null || toolHint != null || host.ShapeEditor?.Readout.Length > 0;
         internal string ReadoutTitle => Session.Active
             ? (Rotating ? "Rotation" : "Movement") + (Axis >= 0 ? "  " + "XYZ"[Axis] + (handleOperation ? " handle" : Local ? " Local" : " Global") : Trackball ? "  Trackball" : "  View")
             : recent != null ? (recent.rotation ? "Rotation" : "Movement") + "  " + "XYZ"[recent.axis] + " handle" : toolHint;

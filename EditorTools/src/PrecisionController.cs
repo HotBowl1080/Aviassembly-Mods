@@ -136,6 +136,7 @@ namespace Aviassembly.EditorTools
             bool allowed = fromHandle ? host.CanStartHandle && placer != null && placer.currentSelectedPart != null && placer.currentMovingPart == null : CanStart;
             if (!allowed || (rotation && placer.currentSelectedPart.lockRotation)) return false;
             if (!Session.Begin(placer)) return false;
+            host.ShapeEditor?.ClearHint();
             projection.Capture(BuildingCamera.cam);
             handleOperation = false; handleDragging = false; recent = null; toolHint = null;
             Rotating = rotation; Modal = modal; Axis = -1; Local = false; PlaneLock = false; Trackball = false;

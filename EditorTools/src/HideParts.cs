@@ -150,7 +150,11 @@ namespace Aviassembly.EditorTools
         public bool HideSelected()
         {
             if (!CanHide || SetSelected == null) return false;
-            var part = placer.currentSelectedPart;
+            var selection = Plugin.Instance?.Selection;
+            var targets = selection?.IsGroup == true ? selection.Parts : new[] { placer.currentSelectedPart };
+            foreach (var part in targets)
+            {
+            if (part == null || IsHidden(part)) continue;
             var entry = new HiddenPart { Part = part };
             foreach (var renderer in part.GetComponentsInChildren<Renderer>(true))
                 if (renderer.GetComponentInParent<BuildingPart>() == part) Capture(entry, renderer);
@@ -161,6 +165,7 @@ namespace Aviassembly.EditorTools
                         foreach (var renderer in decal.GetComponentsInChildren<Renderer>(true)) Capture(entry, renderer);
             hidden.Add(part, entry);
             foreach (var pair in entry.Renderers) if (pair.Key != null) pair.Key.enabled = false;
+            }
             SetSelected.Invoke(placer, new object[] { null });
             if (placer.moveGizmo != null) placer.moveGizmo.gameObject.SetActive(false);
             if (placer.rotationGizmo != null) placer.rotationGizmo.gameObject.SetActive(false);

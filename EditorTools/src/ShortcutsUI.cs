@@ -39,19 +39,25 @@ namespace Aviassembly.EditorTools
                 label.raycastTarget = false;
                 label.text = "<b>EDITOR SHORTCUTS</b>                 <color=#AFC5FF>K or Esc to close</color>\n\n" +
                     focusKey + "    Focused / Unfocused camera\n" +
-                    "V    Hide selected part       I    Show all hidden parts\n\n" +
+                    "V    Hide selection       I    Show all hidden parts\n" +
+                    "Shift-click    Toggle part       A    Select all       Alt+A    Clear\n" +
+                    "B    Box select; drag, Shift add, Ctrl subtract, Esc cancel\n\n" +
                     "Toolbar: X-ray On/Off    Ghost hidden parts; still click-through\n" +
                     "Toolbar: Prop Check On/Off    Selected propeller sweep and gap\n\n" +
                     "<b>MOVE & ROTATE</b>\n" +
                     "Drag an arrow or ring    Move or rotate on that handle\n" +
-                    "G    Move selected part       R    Rotate selected part\n" +
+                    "G    Move selection       R    Rotate selection around its center\n" +
                     "R again    Toggle trackball rotation\n" +
                     "X / Y / Z    Constrain axis; repeat for local; repeat to clear\n" +
                     "Shift + X / Y / Z    Exclude that axis when moving\n" +
                     "Middle mouse    Choose axis from mouse direction\n" +
                     "Shift    Fine adjustment       Ctrl    Snap\n" +
                     "Ctrl + Shift    Fine snapping\n\n" +
-                    "<b>EXACT VALUES</b>\n" +
+                    "<b>SHAPE PRECISION (editable fuselages)</b>\n" +
+                    "S    Uniform scale factor; includes selected part spacing\n" +
+                    "Drag native size/corner/hollow handle, then type an exact value\n" +
+                    "Dimensions: metres       Corners/hollow: percent       Scale: multiplier\n\n" +
+                    "<b>EXACT MOVE / ROTATE VALUES</b>\n" +
                     "Type a number    Set total adjustment during or after a handle drag\n" +
                     "Minus    Toggle sign       /    Reciprocal       Backspace    Erase\n" +
                     "Tab / Ctrl + Tab    Next / previous numeric component\n" +

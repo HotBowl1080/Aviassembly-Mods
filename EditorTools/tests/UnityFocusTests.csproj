@@ -12,6 +12,7 @@
     <Compile Include="UnityPrecisionTests.cs" />
     <Compile Include="UnityHandleTests.cs" />
     <Compile Include="UnityInspectionTests.cs" />
+    <Compile Include="UnityGroupShapeTests.cs" />
     <Compile Include="UnityHidePartsIntegrationTests.cs" />
     <Reference Include="$(GameDir)\Aviassembly_Data\Managed\*.dll"><Private>false</Private></Reference>
     <Reference Include="$(GameDir)\BepInEx\core\BepInEx.dll"><Private>false</Private></Reference>

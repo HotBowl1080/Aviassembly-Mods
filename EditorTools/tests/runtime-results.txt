@@ -242,4 +242,46 @@ PASS Combined layout: native CG and Drag controls located CG=(x:1250.59, y:14.26
 PASS Combined layout: every toolbar control inside screen 1904x984; maxX=892.73
 PASS Combined layout: toolbar clears right CG/Drag controls; maxX=892.73 CG=(x:1250.59, y:14.26, width:97.24, height:38.69) Drag=(x:1362.09, y:14.26, width:146.43, height:38.69) Snapping=(x:14.25, y:13.99, width:213.87, height:39.21) Undo=(x:242.38, y:13.99, width:41.28, height:39.21) Mirror=(x:297.91, y:13.99, width:156.43, height:39.21) RotationSnap=(x:468.60, y:13.99, width:224.51, height:39.21) EditorTools Hide Part=(x:14.25, y:62.28, width:128.32, height:39.21) EditorTools Show Parts=(x:156.83, y:62.28, width:178.23, height:39.21) EditorTools X-ray=(x:349.31, y:62.28, width:117.63, height:39.21) EditorTools Prop Check=(x:481.20, y:62.28, width:149.71, height:39.21) EditorTools Camera Mode=(x:707.37, y:13.99, width:185.35, height:39.21)
 PASS Combined layout: all native and custom toolbar controls avoid each other
-RESULT 244 passed, 0 failed
+PASS Group: Shift-toggle semantics add active part without picking it up
+PASS Group: toggling selected part removes it
+PASS Group: actual transform session captures multiple selected parts
+PASS Group: exact movement applies once to every selected root
+PASS Group: selected parent and child do not double-transform
+PASS Group: saves exclude all preview poses
+PASS Group: rotation uses shared median pivot
+PASS Group: cancel restores all parts and attachment graph
+PASS Group: commit preserves whole group movement
+PASS Group: hidden parts excluded from selection
+PASS Group: box selects projected origins inside rectangle
+PASS Group: Ctrl-box subtracts from selection
+PASS Group: A input selects visible placed parts
+PASS Group: Alt+A input clears selection
+PASS Group: B starts exclusive box selection
+PASS Group: Escape cancels box selection
+PASS Group: Hide button hides selected parts but not unselected children
+PASS Group: G input starts group transform
+PASS Group: G X typed offset routes to all selected roots
+PASS Shape: unsupported parts rejected instead of applying unsaved transform scale
+PASS Shape: installed game exposes native procedural fuselage asset
+PASS Shape: native width handle collider starts precision input
+PASS Shape: typed native handle value updates selected meshes
+PASS Shape: exact width starts and previews without native snapping
+PASS Shape: typed width reaches both selected native procedural meshes
+PASS Shape: preview leaves committed settings and money unchanged
+PASS Shape: native save bytes exclude geometry and price previews
+PASS Shape: geometry preview resumes after save
+PASS Shape: cancel restores both meshes and exact native saves
+PASS Shape: exact corner roundness changes only chosen end and corner
+PASS Shape: invalid roundness cannot silently exceed native limit
+PASS Shape: native geometry commit succeeds for multiple parts
+PASS Shape: committed corners persist in native applied state
+PASS Shape: native idle gizmo update preserves exact dimensions and corner values
+PASS Shape: hollowness supports exact percentages
+PASS Shape: S scaling edits saved procedural geometry rather than Transform.localScale
+PASS Shape: S input starts native geometry scaling
+PASS Shape: numeric input routes into active scale preview
+PASS Shape: Escape input cancels typed scaling
+PASS Shape: unaffordable edits stay uncommitted
+PASS Shape: cancelled unaffordable edit does not charge money
+PASS Shape: changing selection cancels active geometry preview
+RESULT 286 passed, 0 failed

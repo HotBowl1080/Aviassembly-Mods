@@ -1,6 +1,6 @@
-# Aviassembly Editor Tools 0.6.0
+# Aviassembly Editor Tools 0.7.0
 
-Focus Selected, Precision Edit, Hide Parts with X-ray, and propeller clearance are included in one plugin
+Focus Selected, multi-selection, Precision Edit, procedural shape precision, Hide Parts with X-ray, and propeller clearance are included in one plugin
 
 The readout is a prominent bold text line below the top-right controls, with a black outline and no background box: Direction (X): 0.35 m or Rotation (Z): 33.5 degrees
 
@@ -12,6 +12,12 @@ Hide and Show All use a matching row above the native toolbar, leaving the game'
 | --- | --- |
 | Toggle Focused / Unfocused | F or camera mode button |
 | Open or close shortcuts menu | K while idle; Escape also closes |
+| Add or remove a selected part | Shift-click |
+| Select all visible placed parts | A |
+| Clear selection | Alt+A |
+| Box selection | B then drag; Shift adds, Ctrl subtracts, Escape cancels |
+| Uniform scale of editable fuselages | S, then drag or type a multiplier |
+| Exact size, corner roundness, or hollowness | Drag its native shape handle, then type a value |
 | Precision movement or rotation | Click and drag a native arrow or ring |
 | Set the exact total drag adjustment | Type a number during or just after dragging, then Enter |
 | Move selected placed part | G, then move mouse or type an offset |
@@ -28,7 +34,7 @@ Hide and Show All use a matching row above the native toolbar, leaving the game'
 | Confirm typed adjustment | Enter or left click |
 | Confirm mouse handle drag | Release the mouse |
 | Cancel active transform | Escape or right click |
-| Hide selected part | V or crossed-eye Hide button |
+| Hide selected parts | V or crossed-eye Hide button |
 | Restore every hidden part | I or open-eye Show All button |
 | Ghost view for hidden parts | X-ray On/Off toolbar button |
 | Selected propeller clearance | Prop Check On/Off toolbar button |
@@ -71,11 +77,39 @@ During modal numeric input, minus toggles the sign, slash toggles the reciprocal
 
 Native attachment and mirror operations are retained; attached children and gizmos follow the preview; previews do not enter saves or undo history, and confirming schedules one native undo step; numerically readjusting a previously committed drag is a separate undo step
 
-This implements the listed Blender move and rotate interactions; it does not reproduce every Blender feature, including advanced expressions, unit expressions, alternate pivot modes, scale, or cursor wrapping
+This implements the listed Blender selection, move, rotate, and uniform procedural scale interactions; it does not reproduce every Blender feature, including advanced expressions, unit expressions, alternate pivot modes, arbitrary mesh scaling, or cursor wrapping
+
+## Multi-selection
+
+Shift-click toggles individual placed parts without picking them up; the last selected part is active, A selects all visible parts, and Alt+A clears selection
+
+B starts box selection by part origins, including visible parts behind other parts; drag to replace the selection, hold Shift to add or Ctrl to subtract, and press Escape to cancel; parts hidden with V are excluded
+
+Selected groups have an orange overlay and a count; G, R, and native movement or rotation handles affect the group around the average selected origin, with attached children transformed once even if their parent is also selected
+
+V and the Hide button hide the entire selection; unselected child parts stay visible, and I restores every hidden part; other native actions such as delete and copy still act on the active part
+
+## Shape precision
+
+Click the existing fuselage size, width, height, offset, roundness, individual corner, or hollowness handles and type the exact value; the outlined readout shows only the active setting and its units, with no new panel
+
+Width and height are full dimensions in metres; length and end offsets also use metres, while roundness and hollowness use percentages; for example, type 1.237 for a width of 1.237 m or 33.5 for 33.5% corner roundness
+
+Corner values use the game's roundness parameter rather than a geometric fillet radius; native shape limits remain enforced, including a maximum hollowness of 90%
+
+S scales editable fuselage geometry and selected part spacing uniformly around the selection center; type 1.25 for 125% size, and use the native width or height handle for a particular end dimension; the end scale handle uses a multiplier too
+
+All selected parts must be editable procedural fuselages for shape operations; arbitrary scaling of fixed parts is not supported because native saves do not preserve generic transform scale
+
+Mouse editing is unsnapped by default, Shift slows it to one tenth, and Ctrl snaps dimensions and multipliers to 0.1 or percentages to 10%; Enter confirms typed values, Escape or right click cancels, and mouse release confirms a drag without numbers
+
+Absolute dimensions and percentages can be typed immediately after releasing a handle to readjust them; multipliers begin a fresh operation with S or another handle click
+
+Group shape edits apply the same value to the same end of each selected fuselage and include native mirrored counterparts; geometry, collisions, attachment points, weight, price, and save data use the native procedural system, with previews excluded from saves and affordability checked before commit
 
 ## Hide Parts
 
-V hides the selected part's own visuals and decals so you can click visible parts behind it; attached and nested parts stay visible unless separately hidden
+V hides each selected part's own visuals and decals so you can click visible parts behind it; attached and nested parts stay visible unless selected too
 
 Hidden parts default to a faint blue X-ray view through surrounding geometry; they remain excluded from selection, paint, and decal picking so you can edit inside the aircraft; X-ray Off removes the ghost view without restoring those parts
 
@@ -134,7 +168,9 @@ The runner uses a separate disposable game copy under .work\UnityTestHost, suppr
 
 The standalone Hide Parts worker used a different isolated host; its 60 passing checks are recorded in tests\hide-parts-standalone-results.txt
 
-The combined build passes 244 checks with zero failures and compiles with zero warnings or errors; the report is tests\runtime-results.txt
+The combined build passes 286 checks with zero failures and compiles with zero warnings or errors; the report is tests\runtime-results.txt
+
+Multi-selection and shape coverage includes A/Alt+A/B/G/S input routing, native shape handle collider picking, group median rotation, selected parent/child handling, group hiding, exact dimensions and corner percentages on actual procedural mesh assets, idle precision preservation, saved geometry scaling, affordability, cancellation, and preview isolation from native save bytes
 
 Coverage includes camera modes with no selection, focus after new placement, no automatic focus or following during movement, stable native placement rays, manual F overrides during transforms, outlined and lowered readout geometry without a background, K menu input blocking and dismissal, exact numeric and mouse transforms, snapping, mirrors, attached parts, cancellation, save isolation, undo snapshots, typing during and after drag, complete Hide/Show All pointer press and release, V/I routing, text focus, and toolbar bounds at 1904 by 984
 
