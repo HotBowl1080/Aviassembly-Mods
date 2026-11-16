@@ -1,141 +1,262 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
-// Fixed presets belong to the wing model. More wing models can define their own table.
 internal static class BigWingPreset
 {
-    internal static readonly float[] FlapAngles = { 0f, 10f, 20f, 30f };
-    internal static float Angle(int setting) { return FlapAngles[Mathf.Clamp(setting,0,FlapAngles.Length-1)]; }
+    internal static readonly float[] FlapAngles = {0f,10f,20f,30f};
+    internal static float Angle(int stage) { return FlapAngles[Mathf.Clamp(stage,0,FlapAngles.Length-1)]; }
 }
 
+// Devices are cut from the stock skin. Every original triangle is partitioned
+// once, retaining its material, UVs and surface shape.
 internal sealed class WingDevices
 {
+    sealed class Device
+    {
+        internal float first,last,cutFirst,cutLast,frontFirst,frontLast,lowerFirst,lowerLast;
+        internal bool spoiler,leadingFlap;
+        internal float hingeYFirst,hingeYLast;
+        internal readonly List<int> indices=new List<int>();
+        internal float Cut(float z) { return Lerp(cutFirst,cutLast,z); }
+        internal float Front(float z) { return Lerp(frontFirst,frontLast,z); }
+        internal float Lower(float z) { return Lerp(lowerFirst,lowerLast,z); }
+        float Lerp(float a,float b,float z) { return a+(b-a)*(z-first)/(last-first); }
+    }
     readonly BigWingGeometry mesh;
     readonly Vector3[] shell;
     readonly int[] skin;
-    readonly int[] starts = new int[6], ends = new int[6];
-    readonly Vector3[] hinges = new Vector3[6];
-    readonly Vector3[] axes = new Vector3[6];
-    readonly float[] chords = new float[6];
-    internal WingDevices(BigWingGeometry mesh, Vector3[] shell, int[] skin)
+    readonly List<Device> devices=new List<Device>();
+    internal readonly int StockVertexCount;
+    internal WingDevices(BigWingGeometry mesh,Vector3[] shell,int[] skin)
     {
         this.mesh=mesh; this.shell=shell; this.skin=skin;
-        float[,] spans={{-2.90f,-1.65f},{-1.57f,-.25f},{-.17f,1.32f}};
-        for(int i=0;i<3;i++)
+        StockVertexCount=mesh.vertices.Count;
+        AddLeading(-3.82f,-2.55f,false);
+        AddLeading(-2.51f,-1.18f,false);
+        AddLeading(-1.14f,.18f,false);
+        AddLeading(.22f,1.46f,true);
+        AddSpoiler(-1.66f,-.43f);
+        AddSpoiler(.20f,1.13f);
+        for(int sub=0;sub<2;sub++)
         {
-            starts[i]=mesh.vertices.Count;
-            BuildSlat(i,spans[i,0],spans[i,1]);
-            ends[i]=mesh.vertices.Count;
-            starts[i+3]=mesh.vertices.Count;
-            BuildSpoiler(i+3,spans[i,0]+.12f,spans[i,1]-.12f);
-            ends[i+3]=mesh.vertices.Count;
-        }
-    }
-    void Section(float station,out float rear,out float front)
-    {
-        rear=float.PositiveInfinity; front=float.NegativeInfinity;
-        for(int k=0;k<skin.Length;k+=3) for(int j=0;j<3;j++)
-        {
-            Vector3 a=shell[skin[k+j]],b=shell[skin[k+(j+1)%3]];
-            if((a.z>station)==(b.z>station)) continue;
-            float x=a.x+(station-a.z)*(b.x-a.x)/(b.z-a.z);
-            rear=Math.Min(rear,x); front=Math.Max(front,x);
-        }
-        if(float.IsInfinity(front)) throw new ArgumentException("Missing wing cross section");
-    }
-    float Surface(float x,float z,bool top)
-    {
-        float height=top ? float.NegativeInfinity : float.PositiveInfinity;
-        for(int k=0;k<skin.Length;k+=3)
-        {
-            Vector3 a=shell[skin[k]],b=shell[skin[k+1]],c=shell[skin[k+2]];
-            float determinant=(b.z-c.z)*(a.x-c.x)+(c.x-b.x)*(a.z-c.z);
-            if(Math.Abs(determinant)<1e-8f) continue;
-            float u=((b.z-c.z)*(x-c.x)+(c.x-b.x)*(z-c.z))/determinant;
-            float v=((c.z-a.z)*(x-c.x)+(a.x-c.x)*(z-c.z))/determinant;
-            if(u<-.0001f || v<-.0001f || u+v>1.0001f) continue;
-            float y=u*a.y+v*b.y+(1-u-v)*c.y;
-            height=top ? Math.Max(height,y) : Math.Min(height,y);
-        }
-        if(float.IsInfinity(height)) throw new ArgumentException("Missing wing surface x="+x+" z="+z);
-        return height;
-    }
-    void BuildSlat(int i,float first,float last)
-    {
-        float[] x={0f,.12f,.55f,1f,.6f,.12f};
-        float[] y={0f,.36f,.22f,0f,-.20f,-.25f};
-        Vector3[,] points=new Vector3[2,6];
-        for(int side=0;side<2;side++)
-        {
-            float z=side==0?first:last,rear,front; Section(z,out rear,out front);
-            float chord=Math.Min(.20f,(front-rear)*.18f);
-            float nose=front-.035f;
-            float center=(Surface(nose,z,true)+Surface(nose,z,false))*.5f;
-            float thickness=Math.Min(.038f,Surface(nose,z,true)-Surface(nose,z,false))*.7f;
-            for(int k=0;k<6;k++) points[side,k]=new Vector3(nose-x[k]*chord,center+y[k]*thickness,z);
-        }
-        hinges[i]=(points[0,0]+points[1,0])*.5f;
-        axes[i]=(points[1,0]-points[0,0]).normalized;
-        chords[i]=Math.Abs(points[0,0].x-points[0,3].x);
-        Hull(points,6);
-    }
-    void BuildSpoiler(int i,float first,float last)
-    {
-        Vector3[,] points=new Vector3[2,4];
-        for(int side=0;side<2;side++)
-        {
-            float z=side==0?first:last,rear,front; Section(z,out rear,out front);
-            float leading=Mathf.Lerp(rear,front,.85f),trailing=Mathf.Lerp(rear,front,.64f);
-            float ya=Surface(leading,z,true)+.004f,yb=Surface(trailing,z,true)+.004f;
-            points[side,0]=new Vector3(leading,ya,z);
-            points[side,1]=new Vector3(trailing,yb,z);
-            points[side,2]=points[side,1]+Vector3.down*.012f;
-            points[side,3]=points[side,0]+Vector3.down*.012f;
-        }
-        hinges[i]=points[0,0]; axes[i]=(points[1,0]-points[0,0]).normalized;
-        Hull(points,4);
-    }
-    void Hull(Vector3[,] p,int count)
-    {
-        Vector3 center=Vector3.zero;
-        for(int s=0;s<2;s++) for(int k=0;k<count;k++) center+=p[s,k];
-        center/=2*count;
-        for(int s=0;s<2;s++)
-        {
-            Vector3 cap=Vector3.zero;for(int k=0;k<count;k++) cap+=p[s,k];cap/=count;
-            for(int k=0;k<count;k++) mesh.DeviceFace(cap,p[s,k],p[s,(k+1)%count],s==0?Vector3.back:Vector3.forward);
-        }
-        for(int k=0;k<count;k++) {
-            int next=(k+1)%count; Vector3 outward=(p[0,k]+p[1,next])*.5f-center;
-            mesh.DeviceFace(p[0,k],p[1,k],p[1,next],outward);
-            mesh.DeviceFace(p[0,k],p[1,next],p[0,next],outward);
-        }
-    }
-    internal void Pose(float flapAngle,float spoilers,Vector3 down)
-    {
-        for(int i=0;i<6;i++)
-        {
-            bool slat=i<3;
-            float fraction=Mathf.Clamp01(flapAngle/20f);
-            float angle=slat ? 16f*fraction : 55f*spoilers;
-            Vector3 offset=slat ? Vector3.right*(chords[i]*.9f*fraction)+Vector3.down*(.045f*fraction) : Vector3.zero;
-            // Positive local-Z rotation lowers the nose and raises the spoiler trailing edge.
-            Quaternion rotation=Rotation(axes[i],-angle);
-            for(int k=starts[i];k<ends[i];k++)
+            int[] original=mesh.triangles[sub].ToArray();
+            mesh.triangles[sub].Clear();
+            for(int t=0;t<original.Length;t+=3)
             {
-                var v=mesh.vertices[k];
-                mesh.positions[k]=hinges[i]+rotation*(v.p-hinges[i])+offset;
-                mesh.normals[k]=rotation*v.n;
+                int a=original[t],b=original[t+1],c=original[t+2];
+                // Preserve existing flap/track geometry, including its moving groups.
+                bool nativeShell=a<122 && b<122 && c<122 ||
+                    a>=522 && a<586 && b>=522 && b<586 && c>=522 && c<586;
+                if(!nativeShell) { mesh.triangles[sub].Add(a);mesh.triangles[sub].Add(b);mesh.triangles[sub].Add(c);continue; }
+                var fragments=new List<List<BigWingGeometry.Vertex>>();
+                fragments.Add(new List<BigWingGeometry.Vertex>{mesh.vertices[a],mesh.vertices[b],mesh.vertices[c]});
+                foreach(Device d in devices)
+                {
+                    var remainder=new List<List<BigWingGeometry.Vertex>>();
+                    foreach(var polygon in fragments)
+                    {
+                        var inside=polygon;
+                        int planes=d.spoiler?5:3;
+                        for(int plane=0;plane<planes && inside.Count>=3;plane++)
+                        {
+                            List<BigWingGeometry.Vertex> kept,outside;
+                            Split(inside,d,plane,out kept,out outside);
+                            if(outside.Count>=3) remainder.Add(outside);
+                            inside=kept;
+                        }
+                        if(inside.Count>=3) Emit(inside,sub,d);
+                    }
+                    fragments=remainder;
+                }
+                foreach(var polygon in fragments) Emit(polygon,sub,null);
+            }
+        }
+        foreach(Device d in devices) CloseDevice(d);
+    }
+    static float Signed(Vector3 p,Device d,int plane)
+    {
+        if(plane==0)return p.z-d.first;
+        if(plane==1)return d.last-p.z;
+        if(plane==2)return p.x-d.Cut(p.z);
+        if(plane==3)return d.Front(p.z)-p.x;
+        return p.y-d.Lower(p.z);
+    }
+    static void Split(List<BigWingGeometry.Vertex> polygon,Device d,int plane,
+        out List<BigWingGeometry.Vertex> inside,out List<BigWingGeometry.Vertex> outside)
+    {
+        inside=new List<BigWingGeometry.Vertex>();outside=new List<BigWingGeometry.Vertex>();
+        for(int i=0;i<polygon.Count;i++)
+        {
+            var a=polygon[i];var b=polygon[(i+1)%polygon.Count];
+            float da=Signed(a.p,d,plane),db=Signed(b.p,d,plane);
+            bool ia=da>=0f,ib=db>=0f;
+            (ia?inside:outside).Add(a);
+            if(ia==ib)continue;
+            var cross=BigWingGeometry.Vertex.Blend(a,b,da/(da-db));
+            inside.Add(cross);outside.Add(cross);
+        }
+    }
+    void Emit(List<BigWingGeometry.Vertex> polygon,int sub,Device d)
+    {
+        for(int i=1;i<polygon.Count-1;i++)
+        {
+            var a=polygon[0];var b=polygon[i];var c=polygon[i+1];
+            if(Vector3.Cross(b.p-a.p,c.p-a.p).sqrMagnitude<1e-14f)continue;
+            foreach(var vertex in new[]{a,b,c})
+            {
+                int id=mesh.vertices.Count;mesh.vertices.Add(vertex);mesh.triangles[sub].Add(id);
+                if(d!=null)d.indices.Add(id);
             }
         }
     }
+    void Section(float z,out float rear,out float front)
+    {
+        rear=float.PositiveInfinity;front=float.NegativeInfinity;
+        for(int i=0;i<skin.Length;i+=3)for(int e=0;e<3;e++)
+        {
+            Vector3 a=shell[skin[i+e]],b=shell[skin[i+(e+1)%3]];
+            if((a.z>z)==(b.z>z))continue;
+            float x=a.x+(z-a.z)*(b.x-a.x)/(b.z-a.z);
+            rear=Math.Min(rear,x);front=Math.Max(front,x);
+        }
+        if(float.IsInfinity(front))throw new ArgumentException("Missing leading edge section");
+    }
+    float Surface(float x,float z,bool top)
+    {
+        float y=top?float.NegativeInfinity:float.PositiveInfinity;
+        for(int i=0;i<skin.Length;i+=3)
+        {
+            Vector3 a=shell[skin[i]],b=shell[skin[i+1]],c=shell[skin[i+2]];
+            float det=(b.z-c.z)*(a.x-c.x)+(c.x-b.x)*(a.z-c.z);
+            if(Math.Abs(det)<1e-8f)continue;
+            float u=((b.z-c.z)*(x-c.x)+(c.x-b.x)*(z-c.z))/det;
+            float v=((c.z-a.z)*(x-c.x)+(a.x-c.x)*(z-c.z))/det;
+            if(u<-.0001f||v<-.0001f||u+v>1.0001f)continue;
+            float value=u*a.y+v*b.y+(1-u-v)*c.y;
+            y=top?Math.Max(y,value):Math.Min(y,value);
+        }
+        if(float.IsInfinity(y))throw new ArgumentException("Missing wing surface "+x+","+z);
+        return y;
+    }
+    void AddLeading(float first,float last,bool flap)
+    {
+        float rearA,frontA,rearB,frontB;Section(first,out rearA,out frontA);Section(last,out rearB,out frontB);
+        var d=new Device{first=first,last=last,leadingFlap=flap,
+            cutFirst=frontA-Math.Min(.28f,(frontA-rearA)*.20f),
+            cutLast=frontB-Math.Min(.28f,(frontB-rearB)*.20f)};
+        d.hingeYFirst=(Surface(d.cutFirst,first,true)+Surface(d.cutFirst,first,false))*.5f;
+        d.hingeYLast=(Surface(d.cutLast,last,true)+Surface(d.cutLast,last,false))*.5f;
+        devices.Add(d);
+    }
+    void AddSpoiler(float first,float last)
+    {
+        // Both panels follow the sweep of the existing flap leading edges.
+        int f=first<0?1:0;
+        Vector3 start=mesh.origin[f],axis=mesh.axis[f];
+        float aftA=start.x+(first-start.z)*axis.x/axis.z+.045f;
+        float aftB=start.x+(last-start.z)*axis.x/axis.z+.045f;
+        var d=new Device{first=first,last=last,spoiler=true,cutFirst=aftA,cutLast=aftB,
+            frontFirst=aftA+.24f,frontLast=aftB+.24f};
+        d.lowerFirst=(Surface(aftA+.12f,first,true)+Surface(aftA+.12f,first,false))*.5f;
+        d.lowerLast=(Surface(aftB+.12f,last,true)+Surface(aftB+.12f,last,false))*.5f;
+        d.hingeYFirst=Surface(d.frontFirst,first,true);
+        d.hingeYLast=Surface(d.frontLast,last,true);
+        devices.Add(d);
+    }
+    void Face(Vector3 a,Vector3 b,Vector3 c,Vector3 outward,Device owner)
+    {
+        Vector3 n=Vector3.Cross(b-a,c-a);
+        if(n.sqrMagnitude<1e-14f)return;
+        if(Vector3.Dot(n,outward)<0){Vector3 tmp=b;b=c;c=tmp;n=-n;}
+        n=n.normalized;
+        Vector2 uv=mesh.vertices[122].uv;
+        Emit(new List<BigWingGeometry.Vertex>{
+            new BigWingGeometry.Vertex(a,n,uv),new BigWingGeometry.Vertex(b,n,uv),new BigWingGeometry.Vertex(c,n,uv)},1,owner);
+    }
+    void Quad(Vector3 a,Vector3 b,Vector3 c,Vector3 d,Vector3 normal,Device owner)
+    {Face(a,b,c,normal,owner);Face(a,c,d,normal,owner);}
+    void CloseDevice(Device d)
+    {
+        if(d.indices.Count<6)throw new ArgumentException("Device cut produced no surface");
+        if(d.spoiler)
+        {
+            // Thin rigid panel with a shallow fixed well under it.
+            var boundary=new[]{d.first,d.last};
+            Vector3[,] p=new Vector3[2,4];
+            for(int s=0;s<2;s++)
+            {
+                float z=boundary[s],rear=d.Cut(z),front=d.Front(z);
+                p[s,0]=new Vector3(front,Surface(front,z,true),z);
+                p[s,1]=new Vector3(rear,Surface(rear,z,true),z);
+                p[s,2]=p[s,1]+Vector3.down*.012f;p[s,3]=p[s,0]+Vector3.down*.012f;
+                Quad(p[s,0],p[s,1],p[s,2],p[s,3],s==0?Vector3.back:Vector3.forward,d);
+            }
+            Quad(p[0,2],p[1,2],p[1,3],p[0,3],Vector3.down,d);
+            Quad(p[0,1],p[1,1],p[1,2],p[0,2],Vector3.left,d);
+            Quad(p[0,3],p[1,3],p[1,0],p[0,0],Vector3.right,d);
+            Vector3 depth=Vector3.down*.024f;
+            Quad(p[0,0]+depth,p[1,0]+depth,p[1,1]+depth,p[0,1]+depth,Vector3.up,null);
+            return;
+        }
+        // Close the cut faces of the slat and the remaining fixed leading edge.
+        Vector3[] upper=new Vector3[2],lower=new Vector3[2];
+        for(int s=0;s<2;s++)
+        {
+            float z=s==0?d.first:d.last,x=d.Cut(z);
+            upper[s]=new Vector3(x,Surface(x,z,true),z);lower[s]=new Vector3(x,Surface(x,z,false),z);
+            // The span cap follows the existing airfoil outline, including all section vertices.
+            var rim=new List<Vector3>();
+            for(int t=0;t<skin.Length;t+=3)for(int edge=0;edge<3;edge++)
+            {
+                Vector3 a=shell[skin[t+edge]],b=shell[skin[t+(edge+1)%3]];
+                if((a.z>z)==(b.z>z))continue;
+                Vector3 cross=Vector3.Lerp(a,b,(z-a.z)/(b.z-a.z));
+                if(cross.x>=x-1e-5f&&!rim.Exists(v=>(v-cross).sqrMagnitude<1e-9f))rim.Add(cross);
+            }
+            rim.Add(upper[s]);rim.Add(lower[s]);
+            Vector3 center=Vector3.zero;foreach(Vector3 p in rim)center+=p;center/=rim.Count;
+            rim.Sort((a,b)=>Math.Atan2(a.y-center.y,a.x-center.x).CompareTo(Math.Atan2(b.y-center.y,b.x-center.x)));
+            for(int k=0;k<rim.Count;k++) {
+                Face(center,rim[k],rim[(k+1)%rim.Count],s==0?Vector3.back:Vector3.forward,d);
+                Face(center,rim[k],rim[(k+1)%rim.Count],s==0?Vector3.forward:Vector3.back,null);
+            }
+        }
+        Quad(upper[0],upper[1],lower[1],lower[0],Vector3.left,d);
+        Quad(lower[0],lower[1],upper[1],upper[0],Vector3.right,null);
+    }
+    internal void Pose(float flapAngle,float spoilers,Vector3 down)
+    {
+        foreach(Device d in devices)
+        {
+            float fraction=d.spoiler?spoilers:Mathf.Clamp01(flapAngle/20f);
+            float angle=(d.spoiler?-55f:d.leadingFlap?20f:16f)*fraction;
+            // Section-wise transforms preserve span position on swept wings.
+            Quaternion rotation=Rotation(Vector3.forward,angle);
+            Vector3 slope=Hinge(d,d.last)-Hinge(d,d.first);slope/=(d.last-d.first);
+            Vector3 correction=slope-rotation*slope;
+            Vector3 travel=d.spoiler||d.leadingFlap?Vector3.zero:new Vector3(.17f,-.045f,0f)*fraction;
+            foreach(int i in d.indices)
+            {
+                var v=mesh.vertices[i];Vector3 hinge=Hinge(d,v.p.z);
+                mesh.positions[i]=hinge+travel+rotation*(v.p-hinge);
+                Vector3 n=rotation*v.n;
+                n.z-=n.x*correction.x+n.y*correction.y;
+                mesh.normals[i]=n.normalized;
+            }
+        }
+    }
+    Vector3 Hinge(Device d,float z)
+    {
+        float x=d.spoiler?d.Front(z):d.Cut(z);
+        float u=(z-d.first)/(d.last-d.first);
+        return new Vector3(x,Mathf.LerpUnclamped(d.hingeYFirst,d.hingeYLast,u),z);
+    }
     static Quaternion Rotation(Vector3 axis,float degrees)
     {
-        double a=degrees*Math.PI/360; float s=(float)Math.Sin(a);
+        double a=degrees*Math.PI/360;float s=(float)Math.Sin(a);
         return new Quaternion(axis.x*s,axis.y*s,axis.z*s,(float)Math.Cos(a));
     }
 }
-
-
 
 
