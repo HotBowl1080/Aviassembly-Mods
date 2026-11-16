@@ -24,6 +24,13 @@ internal sealed class BigWingGeometry
     Vector3 travel;
     readonly Vector3[] pin=new Vector3[3], socket=new Vector3[3];
     readonly List<Vector3>[] rings={new List<Vector3>(),new List<Vector3>(),new List<Vector3>()};
+    sealed class BridgeVertex
+    {
+        internal int id;
+        internal Vector3 inner,outer;
+        internal float across;
+    }
+    readonly List<BridgeVertex> flapBridge=new List<BridgeVertex>();
     readonly Vector2 edgeUV;
     static readonly int[,] ends={{122,125,127,129},{124,123,126,128},{136,134,130,131},{137,135,133,132}};
     static readonly Vector3 aft=Vector3.left;
@@ -78,9 +85,40 @@ internal sealed class BigWingGeometry
             BuildVane(p,f);
         }
         for(int t=0;t<3;t++) FinishTrack(t);
+        BuildFlapBridge(p);
         devices=new WingDevices(this,p,skin);
         positions=new Vector3[vertices.Count]; normals=new Vector3[vertices.Count];
         for(int i=0;i<vertices.Count;i++) { positions[i]=vertices[i].p; normals[i]=vertices[i].n; }
+    }
+    void BuildFlapBridge(Vector3[] p)
+    {
+        Vector3[] inner={p[137],p[135],p[133],p[132]};
+        Vector3[] outer={p[122],p[125],p[127],p[129]};
+        for(int span=0;span<8;span++)for(int side=0;side<4;side++)
+        {
+            int next=(side+1)%4;
+            float a=span/8f,b=(span+1)/8f;
+            BridgeFace(inner,outer,side,a,next,b,side,b);
+            BridgeFace(inner,outer,side,a,next,a,next,b);
+        }
+    }
+    void BridgeFace(Vector3[] inner,Vector3[] outer,int sideA,float spanA,int sideB,float spanB,int sideC,float spanC)
+    {
+        Vector3 a=BridgeRest(inner[sideA],outer[sideA],spanA);
+        Vector3 b=BridgeRest(inner[sideB],outer[sideB],spanB);
+        Vector3 c=BridgeRest(inner[sideC],outer[sideC],spanC);
+        Vector3 normal=Vector3.Cross(b-a,c-a).normalized;
+        foreach(var pair in new[]{new Vector2(sideA,spanA),new Vector2(sideB,spanB),new Vector2(sideC,spanC)})
+        {
+            int side=(int)pair.x;
+            int id=Add(new Vertex(BridgeRest(inner[side],outer[side],pair.y),normal,edgeUV),-1);
+            triangles[1].Add(id);
+            flapBridge.Add(new BridgeVertex{id=id,inner=inner[side],outer=outer[side],across=pair.y});
+        }
+    }
+    static Vector3 BridgeRest(Vector3 inner,Vector3 outer,float across)
+    {
+        return Vector3.Lerp(inner,outer,across)+Vector3.down*(.012f*(float)Math.Sin(across*Math.PI));
     }
     void Clip(Vertex[] face,float cut,bool rear,int track,int group)
     {
@@ -287,6 +325,11 @@ internal sealed class BigWingGeometry
             float inv=1f/(float)Math.Sqrt(cross.sqrMagnitude+w*w);
             Quaternion q=new Quaternion(cross.x*inv,cross.y*inv,cross.z*inv,w*inv);
             foreach(int i in moving[t+2]) { positions[i]=pin[t]+q*(vertices[i].p-pin[t]); normals[i]=q*vertices[i].n; }
+        }
+        foreach(BridgeVertex vertex in flapBridge)
+        {
+            positions[vertex.id]=BridgeRest(TransformPoint(1,vertex.inner),TransformPoint(0,vertex.outer),vertex.across);
+            normals[vertex.id]=pitch*vertices[vertex.id].n;
         }
         devices.Pose(degrees,spoilers,down);
     }
