@@ -23,10 +23,12 @@ internal sealed class WingDevices
         internal float first,last,cutFirst,cutLast,frontFirst,frontLast,lowerFirst,lowerLast;
         internal bool spoiler,leadingFlap,fixedNose,rootNose;
         internal float hingeYFirst,hingeYLast;
-        internal Vector3 slatForward,slatDown,slatSpan;
         internal readonly List<int> indices=new List<int>();
         internal readonly Dictionary<float,Vector3> hingeSections=new Dictionary<float,Vector3>();
         internal readonly Dictionary<float,Vector3> slopeSections=new Dictionary<float,Vector3>();
+        internal readonly Dictionary<float,Vector3> slatTracks=new Dictionary<float,Vector3>();
+        internal readonly Dictionary<float,Vector3> slatTrackSlopes=new Dictionary<float,Vector3>();
+        internal readonly HashSet<int> supportIndices=new HashSet<int>();
         internal readonly Dictionary<int,Vector3> openPositions=new Dictionary<int,Vector3>();
         internal readonly Dictionary<int,Vector3> openNormals=new Dictionary<int,Vector3>();
         internal float Cut(float z) { return Lerp(cutFirst,cutLast,z); }
@@ -207,16 +209,6 @@ internal sealed class WingDevices
             d.hingeYFirst=Surface(d.frontFirst,first,false);
             d.hingeYLast=Surface(d.frontLast,last,false);
         }
-        if(!flap)
-        {
-            // Each rigid slat has its own span, chord and downward track.
-            // Translation in this frame preserves its distance to the wing;
-            // a shared chordwise rotation tapered the opening across the span.
-            d.slatSpan=Unit(new Vector3(d.cutLast-d.cutFirst,
-                Surface(d.cutLast,last,true)-Surface(d.cutFirst,first,true),last-first));
-            d.slatForward=Unit(Vector3.Cross(Vector3.up,d.slatSpan));
-            d.slatDown=Unit(Vector3.Cross(d.slatForward,d.slatSpan));
-        }
         devices.Add(d);
     }
     void AddFixedNose(float first,float last)
@@ -307,6 +299,7 @@ internal sealed class WingDevices
         d.frontFirst=hingeX[0];d.frontLast=hingeX[stations-1];
         d.hingeYFirst=hingeY[0];d.hingeYLast=hingeY[stations-1];
         SkinLoft(outer,inner,d);
+        int supportStart=d.indices.Count;
         // Two compact hinge webs, folded inside the wing when retracted.
         foreach(float span in new[]{.24f,.76f})
         {
@@ -328,6 +321,7 @@ internal sealed class WingDevices
                 Quad(web[0,k],web[1,k],web[1,next],web[0,next],normal,d);
             }
         }
+        for(int w=supportStart;w<d.indices.Count;w++)d.supportIndices.Add(d.indices[w]);
         foreach(int id in d.indices)
         {
             float z=mesh.vertices[id].p.z;
@@ -341,33 +335,35 @@ internal sealed class WingDevices
         const float step=.0001f;
         foreach(int id in d.indices)
         {
-            var v=mesh.vertices[id];
-            Vector3 point=OpenKruegerPoint(d,v.p);
-            Vector3 dx=(OpenKruegerPoint(d,v.p+Vector3.right*step)-OpenKruegerPoint(d,v.p-Vector3.right*step))/(2f*step);
-            Vector3 dy=(OpenKruegerPoint(d,v.p+Vector3.up*step)-OpenKruegerPoint(d,v.p-Vector3.up*step))/(2f*step);
-            Vector3 dz=(OpenKruegerPoint(d,v.p+Vector3.forward*step)-OpenKruegerPoint(d,v.p-Vector3.forward*step))/(2f*step);
+            var v=mesh.vertices[id];bool support=d.supportIndices.Contains(id);
+            Vector3 point=OpenKruegerPoint(d,v.p,support);
+            Vector3 dx=(OpenKruegerPoint(d,v.p+Vector3.right*step,support)-OpenKruegerPoint(d,v.p-Vector3.right*step,support))/(2f*step);
+            Vector3 dy=(OpenKruegerPoint(d,v.p+Vector3.up*step,support)-OpenKruegerPoint(d,v.p-Vector3.up*step,support))/(2f*step);
+            Vector3 dz=(OpenKruegerPoint(d,v.p+Vector3.forward*step,support)-OpenKruegerPoint(d,v.p-Vector3.forward*step,support))/(2f*step);
             Vector3 normal=Vector3.Cross(dy,dz)*v.n.x+Vector3.Cross(dz,dx)*v.n.y+Vector3.Cross(dx,dy)*v.n.z;
             if(Vector3.Dot(dx,Vector3.Cross(dy,dz))<0f)normal=-normal;
             d.openPositions.Add(id,point);d.openNormals.Add(id,normal.normalized);
         }
     }
-    // Restore the v0.13 scoop exactly, reflected chordwise about its
-    // attachment. Only the fore/aft direction changes; depth and roundness
-    // are identical, and the existing two panels and rib webs are retained.
+    // Preserve the v0.13 scoop curve, mirrored fore/aft. Placement is
+    // handled separately so the aft-curling skin clears the stationary wing.
     static Vector2 KruegerProfile(float t,out Vector2 tangent)
     {
         Vector2 control=new Vector2(-.105f,-.200f),end=new Vector2(-.225f,-.040f);
         tangent=control*(2f*(1f-t))+(end-control)*(2f*t);
         return control*(2f*(1f-t)*t)+end*(t*t);
     }
-    Vector3 OpenKruegerPoint(Device d,Vector3 p)
+    Vector3 OpenKruegerPoint(Device d,Vector3 p,bool support=false)
     {
         Vector3 hinge=Hinge(d,p.z);
         float t=(hinge.x-p.x)/KruegerChord;
         Vector2 tangent,profile=KruegerProfile(t,out tangent);
         Vector2 normal=new Vector2(-tangent.y,tangent.x).normalized;
         float thickness=p.y-(StowedBottom(p.x,p.z)+.014f);
-        return hinge+new Vector3(profile.x-normal.x*thickness,profile.y-normal.y*thickness,0f);
+        Vector3 open=hinge+new Vector3(.240f+profile.x-normal.x*thickness,profile.y-normal.y*thickness,0f);
+        // Keep the scoop outside the nose, with its aft curl below the wing.
+        // The rib roots stay attached while the panels fold forward.
+        return support?Vector3.Lerp(p,open,Mathf.Clamp01(t/.57f)):open;
     }
     float StowedBottom(float x,float z)
     {
@@ -509,8 +505,28 @@ internal sealed class WingDevices
         }
         for(int s=0;s<stations-1;s++)
             Quad(core[s,0],core[s,angles.Length-1],core[s+1,angles.Length-1],core[s+1,0],Vector3.left,null,0);
+        if(!d.fixedNose)PrepareSlatTracks(d);
     }
 
+    Vector3 SlatTrack(Device d,float z)
+    {
+        float a=Math.Max(d.first,z-.001f),b=Math.Min(d.last,z+.001f);
+        float rear,frontA,frontB,front;Section(a,out rear,out frontA);Section(b,out rear,out frontB);Section(z,out rear,out front);
+        Vector3 outward=Unit(new Vector3(1f,0f,-(frontB-frontA)/(b-a)));
+        // Clearance is measured from the VISIBLE fixed nose, not the buried
+        // original slat cut. Its varying depth caused the previous tapered gap.
+        return Vector3.right*(front-d.Cut(z))+outward*.060f+Vector3.down*.018f;
+    }
+    void PrepareSlatTracks(Device d)
+    {
+        foreach(int id in d.indices)
+        {
+            float z=mesh.vertices[id].p.z;if(d.slatTracks.ContainsKey(z))continue;
+            float a=Math.Max(d.first,z-.001f),b=Math.Min(d.last,z+.001f);
+            d.slatTracks.Add(z,SlatTrack(d,z));
+            d.slatTrackSlopes.Add(z,(SlatTrack(d,b)-SlatTrack(d,a))/(b-a));
+        }
+    }
     Vector3 ShadingNormal(Vector3[,] grid,int s,int k)
     {
         int lastSpan=grid.GetLength(0)-1,lastCurve=grid.GetLength(1)-1;
@@ -581,14 +597,25 @@ internal sealed class WingDevices
         {
             float fraction=d.spoiler?spoilers:d.leadingFlap?
                 BigWingPreset.LeadingEdgeExtension(flapAngle):BigWingPreset.SlatExtension(flapAngle);
+            if(!d.spoiler && !d.leadingFlap)
+            {
+                foreach(int id in d.indices)
+                {
+                    var v=mesh.vertices[id];Vector3 track=d.slatTracks[v.p.z],slope0=d.slatTrackSlopes[v.p.z];
+                    if(down.y>0f){track.y=-track.y;slope0.y=-slope0.y;}
+                    mesh.positions[id]=v.p+track*fraction;
+                    Vector3 n=v.n;n.z=(n.z-fraction*(slope0.x*n.x+slope0.y*n.y))/(1f+fraction*slope0.z);
+                    mesh.normals[id]=Unit(n);
+                }
+                continue;
+            }
             float direction=down.y<0f?-1f:1f;
             float angle=(d.spoiler?55f:d.leadingFlap?-110f:0f)*fraction*direction;
             // Section-wise transforms preserve span position on swept wings.
             Quaternion rotation=Rotation(Vector3.forward,angle);
             Vector3 slope=Hinge(d,d.last)-Hinge(d,d.first);slope/=(d.last-d.first);
             Vector3 correction=slope-rotation*slope;
-            Vector3 travel=d.spoiler?Vector3.zero:d.leadingFlap?Vector3.zero:
-                (d.slatForward*.060f+d.slatDown*(down.y<0f?.018f:-.018f))*fraction;
+            Vector3 travel=Vector3.zero;
             foreach(int i in d.indices)
             {
                 var v=mesh.vertices[i];Vector3 hinge=Hinge(d,v.p.z);
