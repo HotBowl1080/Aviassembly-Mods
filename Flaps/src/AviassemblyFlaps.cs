@@ -7,7 +7,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-[BepInPlugin("com.andrewstack.aviassembly.flaps", "Aviassembly Flaps", "0.6.0")]
+[BepInPlugin("com.andrewstack.aviassembly.flaps", "Aviassembly Flaps", "0.7.0")]
 public class FlapsPlugin : BaseUnityPlugin
 {
     internal static int stage { get; private set; }
@@ -22,8 +22,14 @@ public class FlapsPlugin : BaseUnityPlugin
     void Update()
     {
         var controls=InputManager.Instance;
+        float largestThrottle=0f;
+        if(activePlane) foreach(PlanePart part in activePlane.planeParts)
+        {
+            Engine engine=part as Engine;
+            if(engine && engine.isActiveAndEnabled) largestThrottle=Mathf.Max(largestThrottle,engine.currentThrottle);
+        }
         spoilersRequested=activePlane && activePlane.FlightModeInitialized && controls &&
-            controls.throttleInput<0f && activePlane.GetTotalThrust().sqrMagnitude<.0001f &&
+            controls.throttleInput<0f && largestThrottle<=.02f &&
             !(flightUI && flightUI.UIOpen);
         if (Input.GetKeyDown(KeyCode.RightBracket)) SelectStage(stage + 1);
         if (Input.GetKeyDown(KeyCode.LeftBracket)) SelectStage(stage - 1);
