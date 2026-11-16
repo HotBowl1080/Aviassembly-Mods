@@ -15,7 +15,7 @@ namespace Aviassembly.EditorTools
     public sealed class Plugin : BaseUnityPlugin
     {
         public const string Id = "rylan.aviassembly.editortools";
-        public const string Version = "0.5.0";
+        public const string Version = "0.5.1";
         internal static Plugin Instance;
         private Harmony harmony;
         private ConfigEntry<KeyCode> focusKey;
@@ -36,6 +36,9 @@ namespace Aviassembly.EditorTools
         private float transitionStart;
         private int lastShortcutFrame = -1;
         private FocusUI focusUI;
+        private ShortcutsUI shortcutsUI;
+        private int lastHelpFrame = -1;
+        internal bool ShortcutsOpen => shortcutsUI?.IsOpen == true;
         private float nextUIAttempt;
         internal PrecisionController Precision { get; private set; }
         internal HideParts HideParts { get; private set; }
@@ -53,7 +56,7 @@ namespace Aviassembly.EditorTools
 
         private void Awake()
         {
-            focusKey = Config.Bind("Focus Selected", "Shortcut", KeyCode.F, "Toggle Focused and Unfocused even without a selection. Placing or transforming parts focuses them automatically.");
+            focusKey = Config.Bind("Focus Selected", "Shortcut", KeyCode.F, "Toggle Focused and Unfocused even without a selection. Newly placed parts focus after placement; moving does not focus or follow.");
             showPanel = Config.Bind("Focus Selected", "ShowPanel", true, "Show the Focused / Unfocused camera button in the aircraft editor.");
             transitionSeconds = Config.Bind("Focus Selected", "TransitionSeconds", 0.28f,
                 new ConfigDescription("Camera transition duration", new AcceptableValueRange<float>(0.05f, 1.5f)));
@@ -69,7 +72,7 @@ namespace Aviassembly.EditorTools
             {
                 harmony = new Harmony(Id);
                 harmony.PatchAll(typeof(Plugin).Assembly);
-                HideParts = new HideParts(() => Precision?.BlockGameInput == true || TextEntryActive);
+                HideParts = new HideParts(() => Precision?.BlockGameInput == true || TextEntryActive || ShortcutsOpen);
                 HideParts.RegisterPatches(new Harmony(Id + ".hideparts"));
                 Logger.LogInfo("Editor Tools " + Version + " ready. Click arrows/rings and type; G move; R rotate; F focus; V hide; I show all.");
             }
@@ -100,7 +103,7 @@ namespace Aviassembly.EditorTools
                 return (textField != null && textField.isFocused) || (legacy != null && legacy.isFocused);
             }
         }
-        internal bool PrecisionContextValid => InEditor && !GameManager.Instance.modalsOpen &&
+        internal bool PrecisionContextValid => InEditor && !ShortcutsOpen && !GameManager.Instance.modalsOpen &&
             (InputManager.Instance == null || InputManager.Instance.currentInputBlocker == null ||
              (Precision != null && Precision.OwnsBlocker(InputManager.Instance.currentInputBlocker)));
         internal bool CanStartPrecision => PrecisionContextValid && !NativeHandleDragging() && !TextEntryActive;
@@ -118,7 +121,7 @@ namespace Aviassembly.EditorTools
         }
 
         private bool CanUseCamera => InEditor && !BusyUI() && placer.currentMovingPart == null && !NativeHandleDragging() && Precision?.BlockGameInput != true;
-        private bool CanToggleFocus => InEditor && !GameManager.Instance.modalsOpen && !TextEntryActive &&
+        private bool CanToggleFocus => InEditor && !ShortcutsOpen && !GameManager.Instance.modalsOpen && !TextEntryActive &&
             (InputManager.Instance == null || InputManager.Instance.currentInputBlocker == null ||
              (Precision != null && Precision.OwnsBlocker(InputManager.Instance.currentInputBlocker)));
         private bool CanFocus => CanUseCamera && selected != null && selected.hasBeenPlaced;
@@ -144,6 +147,7 @@ namespace Aviassembly.EditorTools
                 cameraController = source.buildingCamera;
             }
             if (!HasEditor) { HideParts?.Observe(source); ResetFocus(); return; }
+            if (Application.isFocused) ProcessHelpInput();
             MovingPartChanged(source);
             Precision?.Tick(source);
             HideParts?.Observe(source);
@@ -161,7 +165,28 @@ namespace Aviassembly.EditorTools
             placementTarget = source.currentMovingPart;
             if (placementTarget == null) return;
             placementProjection.Capture(BuildingCamera.cam);
-            FocusOperation(placementTarget);
+            StopFocusTransition();
+        }
+
+        internal void StopFocusTransition()
+        {
+            pendingFocus = false;
+            if (!transitioning) return;
+            orbitOrigin = cameraController.transform.position + cameraController.transform.forward * cameraController.currentDistance;
+            transitioning = false; visualOffset = Vector3.zero;
+            if (anchored) SetOrigin(orbitOrigin);
+        }
+
+        internal void ProcessHelpInput()
+        {
+            if (Time.frameCount == lastHelpFrame || Keyboard.current == null) return;
+            if (ShortcutsOpen && (Keyboard.current.kKey.wasPressedThisFrame || Keyboard.current.escapeKey.wasPressedThisFrame))
+            { lastHelpFrame = Time.frameCount; shortcutsUI.SetOpen(false); return; }
+            if (!Keyboard.current.kKey.wasPressedThisFrame || !CanToggleFocus || Precision?.BlockGameInput == true ||
+                placer.currentMovingPart != null || NativeHandleDragging()) return;
+            lastHelpFrame = Time.frameCount;
+            if (shortcutsUI == null || !shortcutsUI.IsAlive) shortcutsUI = ShortcutsUI.TryCreate(focusKey.Value.ToString());
+            shortcutsUI?.SetOpen(true);
         }
 
         internal void FocusOperation(BuildingPart target)
@@ -178,7 +203,7 @@ namespace Aviassembly.EditorTools
         {
             if (source != placer) return;
             selected = source.currentSelectedPart;
-            pendingFocus = anchored && selected != null && selected.hasBeenPlaced;
+            pendingFocus = anchored && selected != null && selected.hasBeenPlaced && source.currentMovingPart == null;
         }
 
         private void SyncSelection()
@@ -191,6 +216,8 @@ namespace Aviassembly.EditorTools
 
         private void Update()
         {
+            if (Application.isFocused) ProcessHelpInput();
+            if (!InEditor || GameManager.Instance.modalsOpen) shortcutsUI?.SetOpen(false);
             if (placer != null) Precision?.Tick(placer);
             HideParts?.Observe(placer);
             if (placer != null && !HasEditor) ResetFocus();
@@ -216,7 +243,6 @@ namespace Aviassembly.EditorTools
             if (!HasEditor || source != cameraController) return;
             SyncSelection();
             if (!anchored && !transitioning) return;
-            if (anchored && focusTarget != null) orbitOrigin = focusTarget.transform.position;
             var mouse = MouseInput.currentMouse;
             bool cameraInput = mouse != null && (mouse.rightButton.isPressed || mouse.scroll.ReadValue().sqrMagnitude > 0.01f);
             if (cameraInput)
@@ -333,7 +359,7 @@ namespace Aviassembly.EditorTools
 
         internal bool OwnsOrigin(BuildingCamera source) => HasEditor && source == cameraController && (anchored || transitioning);
 
-        internal bool BlockPanelClick => Precision?.BlockGameInput == true || TextEntryActive ||
+        internal bool BlockPanelClick => ShortcutsOpen || Precision?.BlockGameInput == true || TextEntryActive ||
             ((PointerOverPanel() || PointerOverToolUI()) &&
                 placer != null && placer.currentMovingPart == null && !NativeHandleDragging());
 
@@ -349,10 +375,11 @@ namespace Aviassembly.EditorTools
             return focusUI != null && focusUI.Contains(mouse.position.ReadValue());
         }
 
-        private void OnDisable() { placementProjection.Dispose(); HideParts?.Dispose(); Precision?.Dispose(); ResetFocus(); focusUI?.Dispose(); focusUI = null; }
+        private void OnDisable() { shortcutsUI?.Dispose(); placementProjection.Dispose(); HideParts?.Dispose(); Precision?.Dispose(); ResetFocus(); focusUI?.Dispose(); focusUI = null; }
         private void OnDestroy()
         {
             ResetFocus();
+            shortcutsUI?.Dispose();
             placementProjection.Dispose();
             HideParts?.Dispose();
             Precision?.Dispose();
@@ -386,6 +413,20 @@ namespace Aviassembly.EditorTools
         private static void Postfix(PartPlacer __instance) { Plugin.Instance?.Observe(__instance); }
     }
 
+    [HarmonyPatch(typeof(PartPlacer), "PlaceSelectedPart")]
+    internal static class FocusNewPlacementPatch
+    {
+        internal static void Prefix(PartPlacer __instance, out BuildingPart __state)
+        {
+            var part = __instance.currentSelectedPart;
+            __state = part != null && !part.hasBeenPlaced ? part : null;
+        }
+        internal static void Postfix(BuildingPart __state)
+        {
+            if (__state != null && __state.hasBeenPlaced) Plugin.Instance?.FocusOperation(__state);
+        }
+    }
+
     [HarmonyPatch(typeof(GizmoRaycaster), "Update")]
     internal static class PanelGizmoHoverPatch
     {
@@ -409,6 +450,7 @@ namespace Aviassembly.EditorTools
     {
         private static bool Prefix(BuildingCamera __instance)
         {
+            if (Plugin.Instance?.ShortcutsOpen == true) return false;
             if (Plugin.Instance?.Precision?.BlockGameInput == true) { Plugin.Instance.UpdateFollowingCamera(); return false; }
             if (Plugin.Instance?.TextEntryActive == true) return false;
             Plugin.Instance?.BeforeCameraUpdate(__instance); return true;
@@ -421,7 +463,7 @@ namespace Aviassembly.EditorTools
     {
         private static void Postfix(ref bool __result)
         {
-            if (Plugin.Instance != null && (Plugin.Instance.PointerOverPanel() || Plugin.Instance.Precision?.BlockGameInput == true ||
+            if (Plugin.Instance != null && (Plugin.Instance.ShortcutsOpen || Plugin.Instance.PointerOverPanel() || Plugin.Instance.Precision?.BlockGameInput == true ||
                 Plugin.Instance.PointerOverToolUI())) __result = true;
         }
     }

@@ -147,7 +147,7 @@ namespace Aviassembly.EditorTools
             if (blocker == null) blocker = new GameObject("EditorTools Precision Input").AddComponent<PrecisionInputBlocker>();
             if (InputManager.Instance != null) InputManager.Instance.currentInputBlocker = blocker;
             if (modal && EventSystem.current != null) EventSystem.current.SetSelectedGameObject(null);
-            host.FocusOperation(Session.Target);
+            host.StopFocusTransition();
             Status = rotation ? "Rotate" : "Move";
             return true;
         }

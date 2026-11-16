@@ -22,13 +22,13 @@ PASS Toggle after changing selection uses the new part pivot actual=(-6.0000, 5.
 PASS Focused selection follows the newly selected part actual=(7.0000, 2.0000, -4.0000) expected=(7.0000, 2.0000, -4.0000)
 PASS Selection preserves Focused mode
 PASS Changing focused selection retains zoom
-PASS Picking up a part focuses immediately actual=(-6.0000, 5.0000, 2.0000) expected=(-6.0000, 5.0000, 2.0000)
+PASS Picking up and moving a part does not retarget focused camera actual=(10.0000, 2.0000, -4.0000) expected=(10.0000, 2.0000, -4.0000)
 PASS F can switch to Unfocused during placement
 PASS Finishing placement respects manual Unfocused override
-PASS F can restore focus after placement actual=(-6.0000, 5.0000, 2.0000) expected=(-6.0000, 5.0000, 2.0000)
+PASS F can restore focus after placement actual=(-6.0000, 6.0000, 2.0000) expected=(-6.0000, 6.0000, 2.0000)
 PASS Opening a menu retains focused orbit origin
 PASS Menus block mode toggling
-PASS Closing a menu retains focused orbit origin actual=(-6.0000, 5.0000, 2.0000) expected=(-6.0000, 5.0000, 2.0000)
+PASS Closing a menu retains focused orbit origin actual=(-6.0000, 6.0000, 2.0000) expected=(-6.0000, 6.0000, 2.0000)
 PASS Modal blocks mode toggling
 PASS Native camera button is created from a loaded game MirrorButton template
 PASS Mode button joins the native toolbar layout
@@ -49,15 +49,15 @@ PASS Clicking the same part while Unfocused stays Unfocused
 PASS Unfocused native camera follows later aircraft center changes
 PASS Entering flight releases editor camera ownership
 PASS Aircraft reset releases orbit ownership
-PASS Placement: a new unplaced part automatically enters Focused mode
-PASS Placement: unplaced part becomes the orbit target actual=(-2.0000, 1.0000, 3.0000) expected=(-2.0000, 1.0000, 3.0000)
-PASS Placement: visible camera follows the moving new part actual=(0.0000, 1.0000, 3.0000) expected=(0.0000, 1.0000, 3.0000)
-PASS Placement: follow updates the rendered camera
-PASS Placement: real native mouse projection stays stable while camera follows actual=(1.1876, 3.5819, -0.9218) expected=(1.1876, 3.5819, -0.9218)
+PASS Placement: moving a new part does not enter Focused mode
+PASS Placement: moving a new part leaves orbit origin unchanged actual=(11.0000, 2.0000, -4.0000) expected=(11.0000, 2.0000, -4.0000)
+PASS Placement: moving a new part leaves rendered camera unchanged actual=(-4.6700, 5.1187, -3.7439) expected=(-4.6700, 5.1187, -3.7439)
+PASS Placement: real native mouse projection stays stable while dragging actual=(1.1876, 3.5819, -0.9218) expected=(1.1876, 3.5819, -0.9218)
 PASS Placement: F override is not reactivated by continued dragging
-PASS Placement: drop respects Unfocused and releases frozen projection
-PASS Placement: starting another move automatically focuses again
-PASS Placement: final part remains focused after native placement clears selection actual=(0.0000, 2.0000, 3.0000) expected=(0.0000, 2.0000, 3.0000)
+PASS Placement: completion focuses a new part and releases frozen projection
+PASS Placement: new completed placement becomes orbit target actual=(0.0000, 1.0000, 3.0000) expected=(0.0000, 1.0000, 3.0000)
+PASS Placement: moving an existing part is excluded from automatic focus
+PASS Placement: existing-part movement does not move the focused pivot actual=(0.0000, 1.0000, 3.0000) expected=(0.0000, 1.0000, 3.0000)
 PASS Placement: F and UI can cycle modes with no selected part or active tool
 PASS Precision: native transaction begins for placed part
 PASS Precision: baseline captured once in native history
@@ -129,8 +129,8 @@ PASS Handles: clicking actual arrow collider starts precision without G
 PASS Handles: arrow readout shows only movement and clicked axis
 PASS Handles: mouse movement is precise by default without snap
 PASS Handles: native arrows follow live movement preview
-PASS Following: beginning a precision move automatically focuses its part
-PASS Following: rendered camera tracks live movement preview
+PASS Camera: beginning a precision move preserves Unfocused mode
+PASS Camera: rendered camera remains stationary during movement preview
 PASS Following: stationary cursor cannot feed camera motion back into movement
 PASS Following: F toggles mode during precision without cancelling edit
 PASS Following: manual Unfocused stays active without changing drag value
@@ -153,12 +153,19 @@ PASS Handles: contextual readout contains no old panel fields or buttons
 PASS Readout: one line contains tool, axes, value and units
 PASS Readout: no white background box exists
 PASS Readout: anchored in top-right corner
+PASS Readout: larger bold text sits lower with a prominent black outline pos=(-32.00, -150.00) size=32 outline=0.3 color=RGBA(0, 0, 0, 255) shader=TextMeshPro/Distance Field materialColor=RGBA(0.000, 0.000, 0.000, 1.000)
 PASS Readout: native font generates visible text geometry without vertical clipping
 PASS Readout: rotation uses requested compact degrees format
 PASS Readout: typed rotation text has visible geometry
 PASS Handles: no input leaves native camera and selection controls free
 PASS Handles: unrelated transform invalidates remembered operation
 PASS Handles: reselecting a part clears stale numeric adjustment
+PASS Shortcuts: K opens menu and blocks world clicks
+PASS Shortcuts: open menu blocks native shortcuts and precision editing
+PASS Shortcuts: complete shortcut text fits native canvas
+PASS Shortcuts: second K closes and releases input
+PASS Shortcuts: Escape closes and restores editor interaction
+PASS Shortcuts: native modal prevents opening help
 PASS Combined: production Plugin owns both modules
 PASS Combined: V hides a selected placed part through production module
 PASS Combined: hide leaves physics activation and position unchanged
@@ -203,4 +210,4 @@ PASS Combined layout: native CG and Drag controls located CG=(x:1250.59, y:14.26
 PASS Combined layout: every toolbar control inside screen 1904x984; maxX=892.73
 PASS Combined layout: toolbar clears right CG/Drag controls; maxX=892.73 CG=(x:1250.59, y:14.26, width:97.24, height:38.69) Drag=(x:1362.09, y:14.26, width:146.43, height:38.69) Snapping=(x:14.25, y:13.99, width:213.87, height:39.21) Undo=(x:242.38, y:13.99, width:41.28, height:39.21) Mirror=(x:297.91, y:13.99, width:156.43, height:39.21) RotationSnap=(x:468.60, y:13.99, width:224.51, height:39.21) EditorTools Hide Part=(x:14.25, y:62.28, width:128.32, height:39.21) EditorTools Show Parts=(x:156.83, y:62.28, width:178.23, height:39.21) EditorTools Camera Mode=(x:707.37, y:13.99, width:185.35, height:39.21)
 PASS Combined layout: all native and custom toolbar controls avoid each other
-RESULT 205 passed, 0 failed
+RESULT 212 passed, 0 failed

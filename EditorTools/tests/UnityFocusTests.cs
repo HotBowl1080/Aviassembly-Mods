@@ -161,7 +161,10 @@ public sealed class UnityFocusTests : BaseUnityPlugin
         Put(placer, "<currentMovingPart>k__BackingField", other);
         Call(placer, "set_currentSelectedPart", other);
         Call(plugin, "Observe", placer);
-        Near(Get<Vector3>(controller, "currentOrigin"), other.transform.position, "Picking up a part focuses immediately");
+        var pickupOrigin = Get<Vector3>(controller, "currentOrigin");
+        other.transform.position += Vector3.up;
+        plugin.UpdateFollowingCamera();
+        Near(Get<Vector3>(controller, "currentOrigin"), pickupOrigin, "Picking up and moving a part does not retarget focused camera");
         Call(plugin, "ToggleFocus");
         Check(!Get<bool>(plugin, "anchored"), "F can switch to Unfocused during placement");
         Put(placer, "<currentMovingPart>k__BackingField", null);
@@ -291,32 +294,38 @@ public sealed class UnityFocusTests : BaseUnityPlugin
         pending.hasBeenPlaced = false;
         Call(placer, "set_currentMovingPart", pending);
         Call(placer, "set_currentSelectedPart", pending);
-        Check(plugin.IsFocused, "Placement: a new unplaced part automatically enters Focused mode");
-        Near(Get<Vector3>(controller, "currentOrigin"), pending.transform.position, "Placement: unplaced part becomes the orbit target");
+        Check(!plugin.IsFocused, "Placement: moving a new part does not enter Focused mode");
+        var placementOrigin = Get<Vector3>(controller, "currentOrigin");
         Put(placer, "currentDistance", 6f);
         InputSystem.QueueStateEvent(MouseInput.currentMouse, new MouseState { position = new Vector2(500, 450) }); InputSystem.Update();
         var placementPoint = (Vector3)Call(placer, "GetMouseWorldPosition");
         var renderBeforeFollow = camera.transform.position;
         pending.transform.position += Vector3.right * 2;
         Put(plugin, "transitionStart", Time.unscaledTime - 2); plugin.UpdateFollowingCamera();
-        Near(camera.transform.position + camera.transform.forward * controller.currentDistance, pending.transform.position,
-            "Placement: visible camera follows the moving new part");
-        Check(Vector3.Distance(renderBeforeFollow, camera.transform.position) > 0.1f, "Placement: follow updates the rendered camera");
+        Near(Get<Vector3>(controller, "currentOrigin"), placementOrigin, "Placement: moving a new part leaves orbit origin unchanged");
+        Near(camera.transform.position, renderBeforeFollow, "Placement: moving a new part leaves rendered camera unchanged");
         Near((Vector3)Call(placer, "GetMouseWorldPosition"), placementPoint,
-            "Placement: real native mouse projection stays stable while camera follows");
-        plugin.ToggleFocus(); Call(plugin, "Observe", placer);
+            "Placement: real native mouse projection stays stable while dragging");
+        plugin.ToggleFocus(); plugin.ToggleFocus(); Call(plugin, "Observe", placer);
         Check(!plugin.IsFocused, "Placement: F override is not reactivated by continued dragging");
+        FocusNewPlacementPatch.Prefix(placer, out var newlyPlaced);
         Call(placer, "set_currentMovingPart", (object)null); pending.hasBeenPlaced = true;
         Call(placer, "set_currentSelectedPart", (object)null); Call(plugin, "Observe", placer);
-        Check(!plugin.IsFocused && plugin.PlacementInputCamera == camera,
-            "Placement: drop respects Unfocused and releases frozen projection");
+        FocusNewPlacementPatch.Postfix(newlyPlaced);
+        Check(plugin.IsFocused && plugin.PlacementInputCamera == camera,
+            "Placement: completion focuses a new part and releases frozen projection");
+        Near(Get<Vector3>(controller, "currentOrigin"), pending.transform.position, "Placement: new completed placement becomes orbit target");
+        Put(plugin, "transitionStart", Time.unscaledTime - 2); plugin.UpdateFollowingCamera();
+        var completedOrigin = Get<Vector3>(controller, "currentOrigin");
         Call(placer, "set_currentMovingPart", pending); Call(placer, "set_currentSelectedPart", pending);
-        Check(plugin.IsFocused, "Placement: starting another move automatically focuses again");
+        FocusNewPlacementPatch.Prefix(placer, out var existingPlaced);
+        Check(existingPlaced == null, "Placement: moving an existing part is excluded from automatic focus");
         Call(placer, "set_currentMovingPart", (object)null); Call(placer, "set_currentSelectedPart", (object)null);
         pending.transform.position += Vector3.up;
+        FocusNewPlacementPatch.Postfix(existingPlaced);
         Put(plugin, "transitionStart", Time.unscaledTime - 2); plugin.UpdateFollowingCamera();
-        Near(Get<Vector3>(controller, "currentOrigin"), pending.transform.position,
-            "Placement: final part remains focused after native placement clears selection");
+        Near(Get<Vector3>(controller, "currentOrigin"), completedOrigin,
+            "Placement: existing-part movement does not move the focused pivot");
         plugin.ToggleFocus(); plugin.ToggleFocus(); Call(plugin, "LateUpdate");
         Check(plugin.IsFocused && Get<Button>(ui, "button").interactable,
             "Placement: F and UI can cycle modes with no selected part or active tool");
@@ -326,6 +335,36 @@ public sealed class UnityFocusTests : BaseUnityPlugin
         InputSystem.QueueStateEvent(MouseInput.currentMouse, new MouseState()); InputSystem.Update();
         UnityPrecisionTests.Run(plugin, placer, plane, part, Check);
         UnityHandleTests.Run(plugin, placer, part, Check);
+        TestShortcuts(plugin, placer);
         UnityHidePartsIntegrationTests.Run(plugin, placer, plane, part, Check);
+    }
+
+    private void TestShortcuts(Plugin plugin, PartPlacer placer)
+    {
+        var keyboard = Keyboard.current ?? InputSystem.AddDevice<Keyboard>();
+        void Keypress(Key key)
+        {
+            InputSystem.QueueStateEvent(keyboard, new KeyboardState()); InputSystem.Update();
+            InputSystem.QueueStateEvent(keyboard, new KeyboardState(key)); InputSystem.Update();
+            Put(plugin, "lastHelpFrame", -1); plugin.ProcessHelpInput();
+        }
+        Keypress(Key.K);
+        Check(plugin.ShortcutsOpen && plugin.BlockPanelClick, "Shortcuts: K opens menu and blocks world clicks");
+        Check(InputManager.Instance.currentInputBlocker != null && !plugin.CanStartPrecision,
+            "Shortcuts: open menu blocks native shortcuts and precision editing");
+        var help = Get<object>(plugin, "shortcutsUI");
+        var root = Get<GameObject>(help, "root");
+        var label = root.GetComponentInChildren<TextMeshProUGUI>();
+        Canvas.ForceUpdateCanvases(); label.ForceMeshUpdate();
+        Check(label.text.Contains("V    Hide") && label.text.Contains("Ctrl + Tab") && label.textInfo.characterCount > 200 && !label.isTextOverflowing,
+            "Shortcuts: complete shortcut text fits native canvas");
+        Keypress(Key.K);
+        Check(!plugin.ShortcutsOpen && InputManager.Instance.currentInputBlocker == null, "Shortcuts: second K closes and releases input");
+        Keypress(Key.K); Keypress(Key.Escape);
+        Check(!plugin.ShortcutsOpen && !plugin.BlockPanelClick, "Shortcuts: Escape closes and restores editor interaction");
+        GameManager.Instance.modalsOpen = true; Keypress(Key.K);
+        Check(!plugin.ShortcutsOpen, "Shortcuts: native modal prevents opening help");
+        GameManager.Instance.modalsOpen = false;
+        InputSystem.QueueStateEvent(keyboard, new KeyboardState()); InputSystem.Update();
     }
 }

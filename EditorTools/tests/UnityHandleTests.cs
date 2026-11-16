@@ -62,6 +62,7 @@ public static class UnityHandleTests
             move.Z = Arrow("Z", Vector3.left * 2, Vector3.forward);
             rotate.X = Ring("X", Vector3.left * 2); rotate.Y = Ring("Y", Vector3.down * 2); rotate.Z = Ring("Z", Vector3.right * 2);
             cam.transform.SetPositionAndRotation(originalPosition - Vector3.forward * 15, Quaternion.identity);
+            plugin.ResetFocus();
             ResetPose(); rotate.gameObject.SetActive(false);
             InputAt(cam.WorldToScreenPoint(move.X.transform.position), true);
             precision.ProcessInput();
@@ -71,15 +72,16 @@ public static class UnityHandleTests
             InputAt(cam.WorldToScreenPoint(move.X.transform.position + Vector3.right * 0.37f), true); precision.ProcessInput();
             check(Vector3.Distance(part.transform.position, originalPosition + Vector3.right * 0.37f) < 0.001f, "Handles: mouse movement is precise by default without snap");
             check(Vector3.Distance(move.transform.position, part.transform.position) < 0.0001f, "Handles: native arrows follow live movement preview");
-            check(plugin.IsFocused, "Following: beginning a precision move automatically focuses its part");
+            check(!plugin.IsFocused, "Camera: beginning a precision move preserves Unfocused mode");
+            var cameraBeforeDrag = cam.transform.position;
             Put(plugin, "transitionStart", Time.unscaledTime - 2);
             plugin.UpdateFollowingCamera();
-            check(Vector3.Distance(cam.transform.position + cam.transform.forward * placer.buildingCamera.currentDistance, part.transform.position) < 0.0001f,
-                "Following: rendered camera tracks live movement preview");
+            check(Vector3.Distance(cam.transform.position, cameraBeforeDrag) < 0.0001f,
+                "Camera: rendered camera remains stationary during movement preview");
             precision.ProcessInput(); plugin.UpdateFollowingCamera(); precision.ProcessInput();
             check(Vector3.Distance(part.transform.position, originalPosition + Vector3.right * 0.37f) < 0.001f,
                 "Following: stationary cursor cannot feed camera motion back into movement");
-            plugin.ToggleFocus();
+            plugin.ToggleFocus(); plugin.ToggleFocus();
             check(!plugin.IsFocused && precision.Session.Active, "Following: F toggles mode during precision without cancelling edit");
             plugin.UpdateFollowingCamera(); precision.ProcessInput();
             check(!plugin.IsFocused && Vector3.Distance(part.transform.position, originalPosition + Vector3.right * 0.37f) < 0.001f,
@@ -136,6 +138,8 @@ public static class UnityHandleTests
             var rect = (RectTransform)uiRoot.transform;
             check(rect.anchorMin == Vector2.one && rect.anchorMax == Vector2.one && rect.pivot == Vector2.one,
                 "Readout: anchored in top-right corner");
+            check(rect.anchoredPosition.y <= -150 && label.fontSize >= 32 && label.outlineWidth >= 0.29f && label.outlineColor == Color.black,
+                "Readout: larger bold text sits lower with a prominent black outline pos=" + rect.anchoredPosition + " size=" + label.fontSize + " outline=" + label.outlineWidth + " color=" + label.outlineColor + " shader=" + label.fontSharedMaterial.shader.name + " materialColor=" + label.fontMaterial.GetColor("_OutlineColor"));
             Canvas.ForceUpdateCanvases(); label.ForceMeshUpdate();
             check(label.textInfo.characterCount > 10 && label.textInfo.meshInfo.Any(mesh => mesh.vertexCount > 0),
                 "Readout: native font generates visible text geometry without vertical clipping");

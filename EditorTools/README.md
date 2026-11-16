@@ -1,8 +1,8 @@
-# Aviassembly Editor Tools 0.5.0
+# Aviassembly Editor Tools 0.5.1
 
 Focus Selected, Precision Edit, and Hide Parts are included in one plugin
 
-The readout is one small text line in the top right, with no background box: Direction (X): 0.35 m or Rotation (Z): 33.5 degrees
+The readout is a prominent bold text line below the top-right controls, with a black outline and no background box: Direction (X): 0.35 m or Rotation (Z): 33.5 degrees
 
 Hide and Show All use a matching row above the native toolbar, leaving the game's CG and Drag controls clear; both buttons remain enabled during a valid mouse press so the click completes on release
 
@@ -11,6 +11,7 @@ Hide and Show All use a matching row above the native toolbar, leaving the game'
 | Action | Control |
 | --- | --- |
 | Toggle Focused / Unfocused | F or camera mode button |
+| Open or close shortcuts menu | K while idle; Escape also closes |
 | Precision movement or rotation | Click and drag a native arrow or ring |
 | Set the exact total drag adjustment | Type a number during or just after dragging, then Enter |
 | Move selected placed part | G, then move mouse or type an offset |
@@ -36,13 +37,15 @@ Controls are guarded during text entry, blocking menus, placement, and other exc
 
 The editor starts Unfocused with the default aircraft camera; F or the toolbar button toggles Focused and Unfocused even when nothing is selected or no editing tool is active
 
-Starting placement, picking up a part, or beginning a precision transform automatically focuses that part; the camera follows its current position while retaining the viewing angle and zoom, including before a new part has been placed
+Completing placement of a new part focuses its final position while retaining the viewing angle and zoom; picking up existing parts, moving, and rotating do not activate focus or make the camera follow the part
 
-F can also toggle the mode during placement or precision editing; choosing Unfocused remains in effect for the rest of that operation, returning to the native aircraft center; starting another placement or transform focuses the new operation
+F can also toggle the mode during placement or precision editing; choosing Unfocused returns to the native aircraft center, and moving existing parts preserves that choice
 
-Input projection is captured at the start of a drag so camera following cannot push the part farther away on each frame; the visible camera is independent from the fixed input projection, and dropping the part restores native placement projection
+Input projection is captured at the start of a drag so explicitly toggling F cannot push the part farther away on each frame; dropping the part restores native placement projection
 
-Focused mode remains available without a selection, and the next selected part becomes its target; completing a placement keeps the newly placed part focused even when the game clears its selection
+Focused mode remains available without a selection; completing a new placement keeps its final position focused even when the game clears its selection, and subsequent movement leaves that pivot stationary
+
+K opens the shortcuts menu while idle; K or Escape closes it, and editor actions are blocked while it is open; typing in native text fields, active transforms, placement, and blocking game menus prevent it from opening
 
 ## Precision Edit
 
@@ -111,9 +114,9 @@ The runner uses a separate disposable game copy under .work\UnityTestHost, suppr
 
 The standalone Hide Parts worker used a different isolated host; its 60 passing checks are recorded in tests\hide-parts-standalone-results.txt
 
-The combined build passes 205 checks with zero failures and compiles with zero warnings or errors; the report is tests\runtime-results.txt
+The combined build passes 212 checks with zero failures and compiles with zero warnings or errors; the report is tests\runtime-results.txt
 
-Coverage includes camera modes with no selection, focus on unplaced and moving parts, stable native placement rays while the camera follows, manual F overrides during transforms, top-right text geometry without a background, exact numeric and mouse transforms, snapping, mirrors, attached parts, cancellation, save isolation, undo snapshots, typing during and after drag, complete Hide/Show All pointer press and release, V/I routing, text focus, and toolbar bounds at 1904 by 984
+Coverage includes camera modes with no selection, focus after new placement, no automatic focus or following during movement, stable native placement rays, manual F overrides during transforms, outlined and lowered readout geometry without a background, K menu input blocking and dismissal, exact numeric and mouse transforms, snapping, mirrors, attached parts, cancellation, save isolation, undo snapshots, typing during and after drag, complete Hide/Show All pointer press and release, V/I routing, text focus, and toolbar bounds at 1904 by 984
 
 These are headless runtime fixtures, not a visual playtest of the complete editor or physical keyboard testing; native undo snapshots are checked without exercising the complete aircraft reload path of an actual Undo
 
