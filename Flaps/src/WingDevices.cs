@@ -23,6 +23,7 @@ internal sealed class WingDevices
         internal float first,last,cutFirst,cutLast,frontFirst,frontLast,lowerFirst,lowerLast;
         internal bool spoiler,leadingFlap,fixedNose,rootNose;
         internal float hingeYFirst,hingeYLast;
+        internal Vector3 slatForward,slatDown,slatSpan;
         internal readonly List<int> indices=new List<int>();
         internal readonly Dictionary<float,Vector3> hingeSections=new Dictionary<float,Vector3>();
         internal readonly Dictionary<float,Vector3> slopeSections=new Dictionary<float,Vector3>();
@@ -206,6 +207,16 @@ internal sealed class WingDevices
             d.hingeYFirst=Surface(d.frontFirst,first,false);
             d.hingeYLast=Surface(d.frontLast,last,false);
         }
+        if(!flap)
+        {
+            // Each rigid slat has its own span, chord and downward track.
+            // Translation in this frame preserves its distance to the wing;
+            // a shared chordwise rotation tapered the opening across the span.
+            d.slatSpan=Unit(new Vector3(d.cutLast-d.cutFirst,
+                Surface(d.cutLast,last,true)-Surface(d.cutFirst,first,true),last-first));
+            d.slatForward=Unit(Vector3.Cross(Vector3.up,d.slatSpan));
+            d.slatDown=Unit(Vector3.Cross(d.slatForward,d.slatSpan));
+        }
         devices.Add(d);
     }
     void AddFixedNose(float first,float last)
@@ -340,11 +351,11 @@ internal sealed class WingDevices
             d.openPositions.Add(id,point);d.openNormals.Add(id,normal.normalized);
         }
     }
-    // A broad Krueger scoop, with one continuous bowed face. The end
-    // rises gently into its rolled edge instead of curling into a hook.
+    // The outer Krueger skin bows FORWARD, with its nose turning down
+    // and back. The support webs stay behind this convex front face.
     static Vector2 KruegerProfile(float t,out Vector2 tangent)
     {
-        Vector2 control=new Vector2(.105f,-.200f),end=new Vector2(.225f,-.040f);
+        Vector2 control=new Vector2(.245f,-.025f),end=new Vector2(.180f,-.150f);
         tangent=control*(2f*(1f-t))+(end-control)*(2f*t);
         return control*(2f*(1f-t)*t)+end*(t*t);
     }
@@ -570,13 +581,13 @@ internal sealed class WingDevices
             float fraction=d.spoiler?spoilers:d.leadingFlap?
                 BigWingPreset.LeadingEdgeExtension(flapAngle):BigWingPreset.SlatExtension(flapAngle);
             float direction=down.y<0f?-1f:1f;
-            float angle=(d.spoiler?55f:d.leadingFlap?-110f:12f)*fraction*direction;
+            float angle=(d.spoiler?55f:d.leadingFlap?-110f:0f)*fraction*direction;
             // Section-wise transforms preserve span position on swept wings.
             Quaternion rotation=Rotation(Vector3.forward,angle);
             Vector3 slope=Hinge(d,d.last)-Hinge(d,d.first);slope/=(d.last-d.first);
             Vector3 correction=slope-rotation*slope;
             Vector3 travel=d.spoiler?Vector3.zero:d.leadingFlap?Vector3.zero:
-                (Vector3.right*.055f+new Vector3(down.x,down.y,0f).normalized*.018f)*fraction;
+                (d.slatForward*.060f+d.slatDown*(down.y<0f?.018f:-.018f))*fraction;
             foreach(int i in d.indices)
             {
                 var v=mesh.vertices[i];Vector3 hinge=Hinge(d,v.p.z);
