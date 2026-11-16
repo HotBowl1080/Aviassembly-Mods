@@ -1,0 +1,7 @@
+.work/
+bin/
+obj/
+dist/
+backups/
+tests/bin/
+tests/obj/

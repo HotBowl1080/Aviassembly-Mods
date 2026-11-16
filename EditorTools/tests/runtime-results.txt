@@ -1,0 +1,206 @@
+PASS Release plugin loaded in Unity
+PASS Starts Unfocused; selecting a part does not change mode
+PASS Unfocused selection leaves native camera alone actual=(0.0000, 0.0000, 0.0000) expected=(0.0000, 0.0000, 0.0000)
+PASS Focus toggle assigns the real part pivot as native orbit origin actual=(7.0000, 2.0000, -4.0000) expected=(7.0000, 2.0000, -4.0000)
+PASS First focus preserves zoom distance
+PASS First focus preserves camera angle
+PASS Focus does not move aircraft actual=(0.0000, 0.0000, 0.0000) expected=(0.0000, 0.0000, 0.0000)
+PASS Focus does not move selected part actual=(7.0000, 2.0000, -4.0000) expected=(7.0000, 2.0000, -4.0000)
+PASS Native automatic recenter cannot overwrite focused origin actual=(7.0000, 2.0000, -4.0000) expected=(7.0000, 2.0000, -4.0000)
+PASS Visual easing never interpolates the native orbit origin actual=(7.0000, 2.0000, -4.0000) expected=(7.0000, 2.0000, -4.0000)
+PASS First focus visually eases halfway while preserving angle and distance actual=(-5.0854, 5.6353, -13.3932) expected=(-5.0854, 5.6353, -13.3932)
+PASS Native orbit uses the selected pivot after animation interruption actual=(7.0000, 2.0000, -4.0000) expected=(7.0000, 2.0000, -4.0000)
+PASS Second toggle changes state to Unfocused immediately
+PASS Unfocused uses the actual native aircraft center actual=(10.0000, 2.0000, -4.0000) expected=(10.0000, 2.0000, -4.0000)
+PASS Unfocused releases the game's UpdateOrigin after transition
+PASS Unfocused returns to the default orbit center actual=(10.0000, 2.0000, -4.0000) expected=(10.0000, 2.0000, -4.0000)
+PASS Reset retains zoom instead of applying old close framing
+PASS Current selection cannot immediately reactivate focus after reset
+PASS Selecting another part while Unfocused leaves camera in place actual=(-4.6700, 5.1187, -3.7439) expected=(-4.6700, 5.1187, -3.7439)
+PASS Selection preserves Unfocused mode
+PASS Toggle after changing selection uses the new part pivot actual=(-6.0000, 5.0000, 2.0000) expected=(-6.0000, 5.0000, 2.0000)
+PASS Focused selection follows the newly selected part actual=(7.0000, 2.0000, -4.0000) expected=(7.0000, 2.0000, -4.0000)
+PASS Selection preserves Focused mode
+PASS Changing focused selection retains zoom
+PASS Picking up a part focuses immediately actual=(-6.0000, 5.0000, 2.0000) expected=(-6.0000, 5.0000, 2.0000)
+PASS F can switch to Unfocused during placement
+PASS Finishing placement respects manual Unfocused override
+PASS F can restore focus after placement actual=(-6.0000, 5.0000, 2.0000) expected=(-6.0000, 5.0000, 2.0000)
+PASS Opening a menu retains focused orbit origin
+PASS Menus block mode toggling
+PASS Closing a menu retains focused orbit origin actual=(-6.0000, 5.0000, 2.0000) expected=(-6.0000, 5.0000, 2.0000)
+PASS Modal blocks mode toggling
+PASS Native camera button is created from a loaded game MirrorButton template
+PASS Mode button joins the native toolbar layout
+PASS Native layout keeps mode button clear of the existing toolbar buttons
+PASS UI displays Focused and shortcut
+PASS UI uses native font and background sprite
+PASS UI contains no copied gameplay controllers
+PASS UI button resets camera and immediately displays Unfocused
+PASS UI reset stays Unfocused despite existing selection
+PASS UI button toggles back to Focused
+PASS Mode button hides in menus
+PASS Mode button returns after closing menu
+PASS Deleting a target retains Focused mode for the next selection
+PASS Reset works even after the focused part is deleted
+PASS F enters Focused mode without a selected target
+PASS New selection after deletion preserves Unfocused mode
+PASS Clicking the same part while Unfocused stays Unfocused
+PASS Unfocused native camera follows later aircraft center changes
+PASS Entering flight releases editor camera ownership
+PASS Aircraft reset releases orbit ownership
+PASS Placement: a new unplaced part automatically enters Focused mode
+PASS Placement: unplaced part becomes the orbit target actual=(-2.0000, 1.0000, 3.0000) expected=(-2.0000, 1.0000, 3.0000)
+PASS Placement: visible camera follows the moving new part actual=(0.0000, 1.0000, 3.0000) expected=(0.0000, 1.0000, 3.0000)
+PASS Placement: follow updates the rendered camera
+PASS Placement: real native mouse projection stays stable while camera follows actual=(1.1876, 3.5819, -0.9218) expected=(1.1876, 3.5819, -0.9218)
+PASS Placement: F override is not reactivated by continued dragging
+PASS Placement: drop respects Unfocused and releases frozen projection
+PASS Placement: starting another move automatically focuses again
+PASS Placement: final part remains focused after native placement clears selection actual=(0.0000, 2.0000, 3.0000) expected=(0.0000, 2.0000, 3.0000)
+PASS Placement: F and UI can cycle modes with no selected part or active tool
+PASS Precision: native transaction begins for placed part
+PASS Precision: baseline captured once in native history
+PASS Precision: exact 0.35 movement bypasses snapping
+PASS Precision: attached child follows native movement
+PASS Precision: repeated previews use initial pose rather than accumulating
+PASS Precision: intermediate previews never enter native undo history
+PASS Precision: native serialization sees original state during preview
+PASS Precision: live preview restored after serialization
+PASS Precision: cancel restores selected part and attached child
+PASS Precision: cancel restores exact native save bytes
+PASS Precision: preview/cancel preserves native logical and transform parenting
+PASS Precision: apply schedules native history commit
+PASS Precision: one completed transform creates exactly one native undo step
+PASS Precision: committed values are serialized normally
+PASS Precision: prior history entry retains exact original aircraft for undo
+PASS Precision: edits leave money unchanged
+PASS Precision: signed fractional rotation applied exactly
+PASS Precision: child rotates around the selected part pivot
+PASS Precision: native rotationOffset matches preview
+PASS Precision: rotation cancellation restores initial orientation
+PASS Precision: Blender XYZ Euler round trip (0.00, 0.00, 0.00)
+PASS Precision: Blender XYZ Euler round trip (30.00, 45.00, 60.00)
+PASS Precision: Blender XYZ Euler round trip (-33.50, 2.70, 163.00)
+PASS Precision: Blender XYZ Euler round trip (20.00, 90.00, 80.00)
+PASS Precision: Blender XYZ Euler round trip (-60.00, -90.00, 20.00)
+PASS Precision: Blender XYZ Euler round trip (180.00, -75.00, 359.00)
+PASS Precision: Blender Z maps to vertical
+PASS Precision: Blender positive Z rotation maps X toward Y
+PASS Precision: rejects incomplete or nonfinite input -
+PASS Precision: rejects incomplete or nonfinite input .
+PASS Precision: rejects incomplete or nonfinite input NaN
+PASS Precision: rejects incomplete or nonfinite input Infinity
+PASS Precision: rejects incomplete or nonfinite input 1..2
+PASS Precision: rejects incomplete or nonfinite input 1e999
+PASS Precision: accepts small signed decimals
+PASS Precision: G-style modal move begins
+PASS Precision: G Z 0.35 moves vertically by exact amount
+PASS Precision: repeating axis switches to Local
+PASS Precision: third axis press removes constraint
+PASS Precision: R-style modal rotation begins
+PASS Precision: R Z -33.5 uses Blender rotation convention
+PASS Precision: minus toggles the whole numeric value
+PASS Precision: slash numeric reciprocal works
+PASS Precision: partial numeric entry cannot commit
+PASS Precision: Shift Z excludes the vertical axis
+PASS Precision: selection change cancels preview before native selection mutation
+PASS Precision: rotation-locked parts reject rotation mode
+PASS Precision: contextual readout constructed
+PASS Precision: readout has no absolute-coordinate fields
+PASS Precision: idle starts in normal game mode without readout
+PASS Precision: readout does not intercept clicks
+PASS Precision: mouse projection moves on selected axis
+PASS Precision: Shift mouse motion uses tenth precision
+PASS Precision: Ctrl mouse motion snaps to whole units
+PASS Precision: Ctrl Shift uses fine snapping
+PASS Precision: unconstrained mouse move follows view plane
+PASS Precision: middle mouse chooses projected vertical Z axis
+PASS Precision: repeated X numeric input uses original local axis
+PASS Precision: plane-lock numbers map to both included axes
+PASS Precision: mouse rotation measures angle around projected pivot
+PASS Precision: trackball combines both mouse directions
+PASS Precision: native counterpart lookup finds mirror fixture
+PASS Precision: native mirror follows translation
+PASS Precision: moving preserves existing mirror rotation
+PASS Precision: rotating uses native mirror orientation
+PASS Precision: cancel restores mirror position and rotation
+PASS Handles: clicking actual arrow collider starts precision without G
+PASS Handles: arrow readout shows only movement and clicked axis
+PASS Handles: mouse movement is precise by default without snap
+PASS Handles: native arrows follow live movement preview
+PASS Following: beginning a precision move automatically focuses its part
+PASS Following: rendered camera tracks live movement preview
+PASS Following: stationary cursor cannot feed camera motion back into movement
+PASS Following: F toggles mode during precision without cancelling edit
+PASS Following: manual Unfocused stays active without changing drag value
+PASS Handles: release commits and restores normal idle controls
+PASS Handles: typing after release replaces total drag offset rather than adding to it
+PASS Handles: numeric readjustment preview leaves committed save unchanged
+PASS Handles: Enter confirms post-drag exact value
+PASS Handles: incomplete post-drag numeric input remains uncommitted
+PASS Handles: cancelling a readjustment preserves last committed drag
+PASS Handles: clicking actual ring collider selects only its rotation axis
+PASS Handles: ring mouse drag previews rotation from start pose
+PASS Handles: native rings follow live rotation preview
+PASS Handles: typing during ring drag replaces mouse angle exactly
+PASS Handles: typed rotation waits for confirmation after release
+PASS Handles: typed angle after commit still uses original operation start
+PASS Handles: Escape restores committed rotation when readjusting
+PASS Handles: native Rotate button only shows rotation hint without capturing input
+PASS Handles: native Move button replaces rotation hint with movement hint
+PASS Handles: contextual readout contains no old panel fields or buttons
+PASS Readout: one line contains tool, axes, value and units
+PASS Readout: no white background box exists
+PASS Readout: anchored in top-right corner
+PASS Readout: native font generates visible text geometry without vertical clipping
+PASS Readout: rotation uses requested compact degrees format
+PASS Readout: typed rotation text has visible geometry
+PASS Handles: no input leaves native camera and selection controls free
+PASS Handles: unrelated transform invalidates remembered operation
+PASS Handles: reselecting a part clears stale numeric adjustment
+PASS Combined: production Plugin owns both modules
+PASS Combined: V hides a selected placed part through production module
+PASS Combined: hide leaves physics activation and position unchanged
+PASS Combined: hide clears native selection
+PASS Combined: real Precision transaction starts with another part hidden
+PASS Combined: active Precision owns input
+PASS Combined: V blocked during Precision
+PASS Combined: I blocked during Precision
+PASS Combined: Hide button action blocked during Precision
+PASS Combined: Show All button blocked without selection mutation during Precision
+PASS Combined: actual toolbar listeners enforce guards during Precision
+PASS Combined: cancelled transaction consumes this frame
+PASS Combined: V blocked during consumed frame
+PASS Combined: I blocked during consumed frame
+PASS Combined: Hide button action blocked during consumed frame
+PASS Combined: Show All button blocked without selection mutation during consumed frame
+PASS Combined: actual toolbar listeners enforce guards during consumed frame
+PASS Combined: focused precision field is detected without active transaction
+PASS Combined: V blocked during text focus
+PASS Combined: I blocked during text focus
+PASS Combined: Hide button action blocked during text focus
+PASS Combined: Show All button blocked without selection mutation during text focus
+PASS Combined: actual toolbar listeners enforce guards during text focus
+PASS Combined: F camera action blocked during text focus
+PASS Combined: native PartPlacer and gizmo input blocked during text focus
+PASS Combined: I restores all after text focus ends
+PASS Combined: V works again after all guards release
+PASS Combined: native hide toolbar exists alongside Precision
+PASS Combined: restore label contains count and I
+PASS Combined: real Show All button listener restores part
+PASS Combined: real Hide button listener hides selected part
+PASS Pointer: Hide stays enabled while held down
+PASS Pointer: Hide press blocks aircraft picking
+PASS Pointer: Hide completes a full press and release
+PASS Pointer: Show All stays enabled while held down
+PASS Pointer: Show All press blocks aircraft picking
+PASS Pointer: Show All completes a full press and release
+PASS Combined: former H shortcut has no action
+PASS Combined: final I restores original renderer state
+PASS Combined layout: all four native bottom controls forced visible
+PASS Combined layout: native CG and Drag controls located CG=(x:1250.59, y:14.26, width:97.24, height:38.69) Drag=(x:1362.09, y:14.26, width:146.43, height:38.69)
+PASS Combined layout: every toolbar control inside screen 1904x984; maxX=892.73
+PASS Combined layout: toolbar clears right CG/Drag controls; maxX=892.73 CG=(x:1250.59, y:14.26, width:97.24, height:38.69) Drag=(x:1362.09, y:14.26, width:146.43, height:38.69) Snapping=(x:14.25, y:13.99, width:213.87, height:39.21) Undo=(x:242.38, y:13.99, width:41.28, height:39.21) Mirror=(x:297.91, y:13.99, width:156.43, height:39.21) RotationSnap=(x:468.60, y:13.99, width:224.51, height:39.21) EditorTools Hide Part=(x:14.25, y:62.28, width:128.32, height:39.21) EditorTools Show Parts=(x:156.83, y:62.28, width:178.23, height:39.21) EditorTools Camera Mode=(x:707.37, y:13.99, width:185.35, height:39.21)
+PASS Combined layout: all native and custom toolbar controls avoid each other
+RESULT 205 passed, 0 failed

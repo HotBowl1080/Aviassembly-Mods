@@ -1,0 +1,61 @@
+PASS Empty hidden state after initialization
+PASS Native selection raycast transpiler installed
+PASS Native paint picking also filters hidden targets
+PASS Native decal picking also filters hidden targets
+PASS Placed selected part is eligible
+PASS Hide action succeeds
+PASS Hidden count increments once
+PASS Selected part renderer is hidden
+PASS Logical attached child stays visible
+PASS Nested BuildingPart stays visible
+PASS Initially disabled owned renderer remains disabled
+PASS Collider enabled states remain exactly unchanged
+PASS Layer and GameObject activation remain unchanged
+PASS Transform remains unchanged
+PASS Attachment graph remains unchanged
+PASS Hidden selection is safely cleared
+PASS No selection cannot create duplicate hidden entry
+PASS Physical ray still hits hidden fuselage
+PASS Editor selection passes through hidden fuselage to tank
+PASS Nested part's selection collider is not hidden
+PASS Queued highlight geometry excludes hidden owner but retains visible nested part
+PASS Filtered native highlight mesh and renderer arrays stay aligned
+PASS Both native DrawMesh rendering paths are filtered
+PASS Native serialized aircraft bytes are unchanged while hidden
+PASS Multiple parts can be hidden separately
+PASS All hidden selection hits are skipped
+PASS Show All restores both surviving parts
+PASS Show All preserves pre-existing disabled states
+PASS Selection returns to native nearest hit after restore
+PASS Host Precision Edit guard blocks hiding
+PASS Moving a part blocks hiding
+PASS Open menu blocks hiding
+PASS Modal blocks hiding
+PASS Native input blocker prevents hiding while typing
+PASS Mouse press/handle drag blocks hiding
+PASS Hide works after input guards clear
+PASS Native move and rotation gizmos are cleared
+PASS Native toolbar UI created from actual Building scene assets
+PASS UI hidden count and I shortcut match state
+PASS Show All enabled with a hidden part
+PASS Show All button restores and disables at zero
+PASS UI joins native toolbar layout
+PASS Hide action has crossed-eye icon
+PASS Show All action has open-eye icon
+PASS H is not a hide shortcut
+PASS V hides the selection
+PASS I restores all hidden parts without a selection
+PASS Separately parented owned decal is hidden and excluded from picking
+PASS Hidden decal is also excluded from direct outline rendering
+PASS V and I are both blocked during host precision text or consumed-frame input
+PASS Owned decal visibility restores exactly
+PASS UI restoration action respects blocking menus
+PASS Leaving editor restores visuals
+PASS Pre-flight/reset lifecycle hook restores before transition code
+PASS Pre-flight restoration is registered on native entry point
+PASS Aircraft reset restoration is registered
+PASS Destroyed hidden parts are pruned safely
+PASS Aircraft identity change restores surviving old objects
+PASS Dispose restores exact original renderer states
+PASS Dispose removes only module-owned patches
+RESULT 60 passed, 0 failed

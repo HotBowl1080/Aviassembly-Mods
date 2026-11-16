@@ -1,0 +1,27 @@
+Build the next Aviassembly editor feature, Hide Parts, as a standalone module for later integration by the main agent. Focus Selected is already implemented; the main agent is currently building Blender-style position and rotation editing. Work only on Hide Parts.
+
+Read-only references:
+Main project: C:\Users\Rylan\Documents\ChatGPT\Aviassembly mods
+Installed game: C:\Program Files (x86)\Steam\steamapps\common\Aviassembly
+The existing src files, project references, and tests\PrepareUnityTests.ps1 show verified BepInEx 5, native UI styling, and the isolated Unity test approach. Do not change the main project's src, tests, project file, dist, installer, release archives, .work\UnityTestHost, or installed game.
+
+Use your own assigned task workspace for ALL code, logs, build output, and a separate disposable game test host. Deliver HideParts.cs and, if useful, HidePartsUI.cs, with a separate test project and integration notes. Put any temporary BepInEx entry point in your test harness, not in the reusable module. The main agent will review and integrate the module into the existing single DLL.
+
+Behavior:
+1. With a placed part selected, V or a native-styled Hide button temporarily hides only that part in the aircraft editor. Check whether V or I conflicts with an existing action first.
+2. The hidden part's owned visual renderers disappear, and its selection hit targets stop intercepting clicks, so a fuel tank inside a hidden fuselage can be selected. Attached parts remain attached and visible unless separately hidden. Filter ownership by each component's nearest BuildingPart; do not disable the entire GameObject or blindly disable descendants.
+3. Preserve the original enabled states, layer choices, and any other modified properties exactly. Keep flight physics, attachment lists, transforms, serialized aircraft data, money, and undo history unchanged. Inspect how selection and physics share colliders before deciding how to suppress hit targets.
+4. Safely clear a hidden selection and its gizmos without deleting, moving, detaching, or committing a picked-up part. Do not hide during placement, handle dragging, text entry, blocking menus, flight, or a Precision Edit transaction.
+5. Add I to restore every hidden part, plus Hide [V] and Show All (count) [I] buttons with crossed-eye and open-eye icons, using the game's actual font, colors, sprite, canvas scaling, and toolbar layout. Disable it when no parts are hidden. Keep the UI out of existing controls.
+6. Restore surviving objects on Show All, editor exit, mod disable/unload, and before entering flight or changing aircraft. Clean destroyed-object references without exceptions. Do not accidentally re-enable components that were already disabled before hiding.
+7. Save/reopen must never persist hidden state. Identify and verify the real save, load, aircraft-reset, and flight lifecycle paths. Do not assume a separate game copy uses separate player data.
+
+Integration:
+Expose a small explicit API for initialization, editor/selection observation, HideSelected, ShowAll, hidden count, and cleanup. Accept a host-provided predicate that blocks interaction while Precision Edit is active or text input owns focus. Document required hooks and call ordering. Keep Harmony patches scoped; if possible, let the host register patches rather than adding a second production plugin or duplicating Plugin.Instance. State any compatibility assumptions.
+
+Isolation and testing:
+Run no computer-use tools. Build and run tests only in your OWN disposable game copy with its OWN plugins, configs, logs, cache, results, and PID tracking. Read installed game binaries only as local references; do not install anything there or launch the real game. Start test processes hidden and with explicit executable/working paths. Never terminate all Aviassembly processes; manage only the exact PID you launched and verify its executable path. Do not reuse or change the main agent's test host. Prevent startup from reading/writing real saves or initializing Steam/cloud synchronization, using the existing callback-suppressed synthetic fixture approach or demonstrably equivalent isolation established before launch.
+
+Test hiding a fuselage while a child/internal part remains visible and selectable; several hidden parts; initially disabled renderers/colliders; showing all; deleted hidden parts; selection/gizmo cleanup; lifecycle restoration; save-data invariance; text/transaction guards; native UI count and click routing. Build against the actual assemblies, inspect runtime logs, fix failures, and rerun affected checks. Do not claim visual validation from headless tests.
+
+Review the code for stale state, nested ownership, leaked patches/UI, and shared-data writes. Deliver source, compiled test DLL, build instructions, exact output paths, an integration checklist, and honest results distinguishing inspected code, compiled code, fixture checks, and untested gameplay. Do not integrate into the main mod yourself, and do not implement Precision Edit or Clearance Preview.

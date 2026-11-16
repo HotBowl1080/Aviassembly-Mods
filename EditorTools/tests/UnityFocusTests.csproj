@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <DisableImplicitFrameworkReferences>true</DisableImplicitFrameworkReferences><NoStdLib>true</NoStdLib>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems><GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute><LangVersion>latest</LangVersion>
+    <AssemblyName>Aviassembly.FocusRuntimeTests</AssemblyName>
+    <GameDir Condition="'$(GameDir)' == ''">C:\Program Files (x86)\Steam\steamapps\common\Aviassembly</GameDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="UnityFocusTests.cs" />
+    <Compile Include="UnityPrecisionTests.cs" />
+    <Compile Include="UnityHandleTests.cs" />
+    <Compile Include="UnityHidePartsIntegrationTests.cs" />
+    <Reference Include="$(GameDir)\Aviassembly_Data\Managed\*.dll"><Private>false</Private></Reference>
+    <Reference Include="$(GameDir)\BepInEx\core\BepInEx.dll"><Private>false</Private></Reference>
+    <Reference Include="$(GameDir)\BepInEx\core\0Harmony.dll"><Private>false</Private></Reference>
+    <Reference Include="..\bin\Release\netstandard2.0\Aviassembly.EditorTools.dll"><Private>false</Private></Reference>
+  </ItemGroup>
+</Project>
