@@ -628,7 +628,7 @@ internal sealed class WingDevices
                 BigWingPreset.LeadingEdgeExtension(flapAngle):BigWingPreset.SlatExtension(flapAngle);
             if(d.leadingFlap)
             {
-                Quaternion hingeRotation=Rotation(d.hingeAxis,(down.y<0f?50f:-50f)*fraction);
+                Quaternion hingeRotation=Rotation(d.hingeAxis,(down.y<0f?95f:-95f)*fraction);
                 foreach(int id in d.indices)
                 {
                     var v=mesh.vertices[id];
