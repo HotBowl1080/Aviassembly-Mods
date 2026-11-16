@@ -27,6 +27,7 @@ internal sealed class WingDevices
     readonly Vector3[] shell;
     readonly int[] skin;
     readonly List<Device> devices=new List<Device>();
+    readonly List<int[]> leadingCaps=new List<int[]>();
     internal readonly int StockVertexCount;
     internal WingDevices(BigWingGeometry mesh,Vector3[] shell,int[] skin)
     {
@@ -72,7 +73,12 @@ internal sealed class WingDevices
                 foreach(var polygon in fragments) Emit(polygon,sub,null);
             }
         }
-        foreach(Device d in devices) CloseDevice(d);
+        foreach(Device d in devices)
+        {
+            int first=mesh.vertices.Count;
+            CloseDevice(d);
+            if(!d.spoiler) leadingCaps.Add(new[]{first,mesh.vertices.Count});
+        }
     }
     static float Signed(Vector3 p,Device d,int plane)
     {
@@ -143,8 +149,8 @@ internal sealed class WingDevices
     {
         float rearA,frontA,rearB,frontB;Section(first,out rearA,out frontA);Section(last,out rearB,out frontB);
         var d=new Device{first=first,last=last,leadingFlap=flap,
-            cutFirst=frontA-Math.Min(.28f,(frontA-rearA)*.20f),
-            cutLast=frontB-Math.Min(.28f,(frontB-rearB)*.20f)};
+            cutFirst=frontA-Math.Min(flap?.15f:.10f,(frontA-rearA)*.075f),
+            cutLast=frontB-Math.Min(flap?.15f:.10f,(frontB-rearB)*.075f)};
         d.hingeYFirst=(Surface(d.cutFirst,first,true)+Surface(d.cutFirst,first,false))*.5f;
         d.hingeYLast=(Surface(d.cutLast,last,true)+Surface(d.cutLast,last,false))*.5f;
         devices.Add(d);
@@ -227,15 +233,22 @@ internal sealed class WingDevices
     }
     internal void Pose(float flapAngle,float spoilers,Vector3 down)
     {
+        foreach(int[] cap in leadingCaps) for(int i=cap[0];i<cap[1];i++)
+        {
+            mesh.positions[i]=mesh.vertices[i].p;
+            mesh.normals[i]=mesh.vertices[i].n;
+        }
         foreach(Device d in devices)
         {
             float fraction=d.spoiler?spoilers:Mathf.Clamp01(flapAngle/20f);
-            float angle=(d.spoiler?-55f:d.leadingFlap?20f:16f)*fraction;
+            float direction=down.y<0f?-1f:1f;
+            float angle=(d.spoiler?55f:d.leadingFlap?20f:12f)*fraction*direction;
             // Section-wise transforms preserve span position on swept wings.
             Quaternion rotation=Rotation(Vector3.forward,angle);
             Vector3 slope=Hinge(d,d.last)-Hinge(d,d.first);slope/=(d.last-d.first);
             Vector3 correction=slope-rotation*slope;
-            Vector3 travel=d.spoiler||d.leadingFlap?Vector3.zero:new Vector3(.17f,-.045f,0f)*fraction;
+            Vector3 travel=d.spoiler||d.leadingFlap?Vector3.zero:
+                (Vector3.right*.055f+new Vector3(down.x,down.y,0f).normalized*.018f)*fraction;
             foreach(int i in d.indices)
             {
                 var v=mesh.vertices[i];Vector3 hinge=Hinge(d,v.p.z);
@@ -245,6 +258,11 @@ internal sealed class WingDevices
                 mesh.normals[i]=n.normalized;
             }
         }
+        // Stowed devices already meet exactly along the original shell. Internal
+        // end caps would overlap there when only the spoilers switch this mesh on.
+        if(flapAngle<=.0001f) foreach(int[] cap in leadingCaps)
+            for(int i=cap[0];i<cap[1];i+=3)
+                mesh.positions[i+1]=mesh.positions[i+2]=mesh.positions[i];
     }
     Vector3 Hinge(Device d,float z)
     {
