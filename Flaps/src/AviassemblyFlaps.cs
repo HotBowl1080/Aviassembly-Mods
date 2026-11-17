@@ -7,7 +7,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-[BepInPlugin("com.andrewstack.aviassembly.flaps", "Aviassembly Flaps", "0.21.0")]
+[BepInPlugin("com.andrewstack.aviassembly.flaps", "Flap Mod", "0.22.0")]
 public class FlapsPlugin : BaseUnityPlugin
 {
     internal static int stage { get; private set; }
@@ -74,6 +74,8 @@ public class FlapMarker : MonoBehaviour
     internal float SpoilerFraction { get { return spoilerFraction; } }
     public bool IsReady { get { return geometry != null || straight != null; } }
     internal bool IsStraight { get { return straight != null; } }
+    internal float CurrentAngle { get { return angle; } }
+    internal float FlapAreaFraction { get { return straight==null?0f:straight.FlapAreaFraction; } }
     internal bool CanOperate(PlaneContainer plane) { return owner==plane && isActiveAndEnabled && wing && wing.isActiveAndEnabled && wing.rb; }
 
     void Start()
@@ -219,14 +221,14 @@ public static class WingSettings
         settings.enabled = false;
         Toggle source=settings.invertToggle;
         TMP_Text label=Array.Find(panel.GetComponentsInChildren<TMP_Text>(true), t=>t.name=="InvertLabel");
-        if (!label) throw new InvalidOperationException("Big Wing settings label is missing");
+        if (!label) throw new InvalidOperationException("Flap Mod settings label is missing");
         RectTransform body=__instance.content;
         foreach (LayoutGroup layout in panel.GetComponents<LayoutGroup>()) layout.enabled=false;
         ContentSizeFitter fitter=panel.GetComponent<ContentSizeFitter>();
         if(fitter) fitter.enabled=false;
         for(int i=0;i<body.childCount;i++) body.GetChild(i).gameObject.SetActive(false);
         body.sizeDelta=new Vector2(154f,32f);
-        var row=new GameObject("Big Wing flap setting",typeof(RectTransform),typeof(Image),typeof(Toggle));
+        var row=new GameObject("Flap Mod wing setting",typeof(RectTransform),typeof(Image),typeof(Toggle));
         RectTransform line=(RectTransform)row.transform;
         line.SetParent(body,false);
         line.anchorMin=Vector2.zero; line.anchorMax=Vector2.one;
@@ -281,6 +283,27 @@ public static class FlapPhysics
         __instance.liftForce=__state;
         FlapMarker marker = __instance.GetComponent<FlapMarker>();
         if (!marker || !marker.IsReady || !__instance.rb || !__instance.orientation) return;
+        if(marker.IsStraight){
+            if(!__0 || !__0.FlightModeInitialized || !marker.CanOperate(__0))return;
+            float weight=__instance.GetWingArea()*Mathf.Max(0f,__instance.liftForce),total=0f;
+            foreach(PlanePart part in __0.planeParts){
+                Wing other=part as Wing;
+                if(other && other.isActiveAndEnabled && other.gameObject.activeInHierarchy && other.rb==__instance.rb)
+                    total+=other.GetWingArea()*Mathf.Max(0f,other.liftForce);
+            }
+            var force=StraightWingAerodynamics.Evaluate(
+                __instance.rb.GetPointVelocity(__instance.orientation.position),
+                __instance.orientation.forward,__instance.orientation.right,
+                Mathf.Sign(__instance.transform.localScale.y),marker.CurrentAngle,marker.FlapAreaFraction,
+                __instance.GetWingArea(),__instance.liftForce,__instance.dragForce,
+                __0.GravityMultiplier,__0.liftMultiplier,__instance.rb.mass,__0.RealGravity,
+                total>0f?weight/total:0f);
+            // Match the game's balanced lift origin. Drag acts through the
+            // rigidbody COM instead of creating a new wing-pivot pitch moment.
+            __instance.rb.AddForceAtPosition(force.lift,__0.GetLiftOrigin());
+            __instance.rb.AddForce(force.drag);
+            return;
+        }
         float spoiler=marker.SpoilerFraction;
         __0.airbreakDrag+=.65f*spoiler;
         if(spoiler>0f && __0.IsGrounded())
@@ -301,7 +324,3 @@ public static class FlapPhysics
         __instance.rb.AddForceAtPosition(lift + drag, __instance.orientation.position);
     }
 }
-
-
-
-

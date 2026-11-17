@@ -17,6 +17,8 @@ internal sealed class StraightWingGeometry
     internal readonly List<int>[] triangles={new List<int>(),new List<int>()};
     internal readonly List<int> moving=new List<int>();
     internal readonly Vector3[] positions,normals;
+    internal readonly float FlapAreaFraction;
+    internal const float HingeGap=.006f, EndGap=.004f;
     readonly StraightWingFlapMotion motion,reverseMotion;
     internal static readonly Vector3 HingeRoot=new Vector3(-.85977f,-.0722f,2.85f);
     internal static readonly Vector3 HingeTip=new Vector3(-.50146f,.193f,.18f);
@@ -41,7 +43,22 @@ internal sealed class StraightWingGeometry
         }
         foreach(Face f in current)if(f.cap){Vertex a=f.a,b=f.b,c=f.c;a.n=-a.n;b.n=-b.n;c.n=-c.n;stationary.Add(new Face(a,c,b,f.material,true));}
         foreach(Face face in Conform(stationary))Add(face,false);
-        foreach(Face face in current)Add(face,true);
+        // Affinely inset the already closed flap. Recutting thin caps can
+        // introduce slivers; this preserves topology and the native UVs.
+        float depth=0f;
+        foreach(Face face in current)foreach(Vertex v in new[]{face.a,face.b,face.c})
+            depth=Mathf.Max(depth,-(v.p.x+.1341985f*v.p.z+.4773043f));
+        float normalGap=HingeGap*planes[2].magnitude;
+        float chordScale=1f-normalGap/depth,spanScale=1f-2f*EndGap/(2.85f-.18f);
+        if(chordScale<=0f)throw new ArgumentException("Straight Wing flap is too shallow for its seam");
+        float stockArea=0f,flapArea=0f;
+        for(int i=0;i<skin.Length;i+=3)stockArea+=Math.Abs(Vector3.Cross(p[skin[i+1]]-p[skin[i]],p[skin[i+2]]-p[skin[i]]).y);
+        foreach(Face face in current){
+            var inset=new Face(Inset(face.a,chordScale,spanScale,normalGap),Inset(face.b,chordScale,spanScale,normalGap),Inset(face.c,chordScale,spanScale,normalGap),face.material,face.cap);
+            Add(inset,true);
+            if(inset.material==0)flapArea+=Math.Abs(Vector3.Cross(inset.b.p-inset.a.p,inset.c.p-inset.a.p).y);
+        }
+        FlapAreaFraction=Mathf.Clamp01(flapArea/stockArea);
         var rp=new Vector3[vertices.Count];var rn=new Vector3[vertices.Count];for(int i=0;i<rp.Length;i++){rp[i]=vertices[i].p;rn[i]=vertices[i].n;}
         motion=new StraightWingFlapMotion(rp,rn,moving.ToArray(),HingeRoot,HingeTip,Vector3.left);
         reverseMotion=new StraightWingFlapMotion(rp,rn,moving.ToArray(),ReverseHingeRoot,ReverseHingeTip,Vector3.left);
@@ -50,6 +67,14 @@ internal sealed class StraightWingGeometry
     internal void Pose(float angle,Vector3 down){
         if(Vector3.Dot(down,Vector3.up)>0f){reverseMotion.Pose(angle,down);Array.Copy(reverseMotion.positions,positions,positions.Length);Array.Copy(reverseMotion.normals,normals,normals.Length);}
         else motion.Pose(angle,down);
+    }
+    static Vertex Inset(Vertex v,float chordScale,float spanScale,float gap){
+        float distance=v.p.x+.1341985f*v.p.z+.4773043f;
+        v.p.z=1.515f+(v.p.z-1.515f)*spanScale;
+        v.p.x=distance*chordScale-gap-.1341985f*v.p.z-.4773043f;
+        float shear=.1341985f*(chordScale-spanScale);
+        v.n=new Vector3(v.n.x/chordScale,v.n.y,v.n.z/spanScale-shear*v.n.x/(chordScale*spanScale)).normalized;
+        return v;
     }
     static List<Face> Conform(List<Face> input)
     {
@@ -130,7 +155,3 @@ internal sealed class StraightWingGeometry
         if(polygon.Count==3)output.Add(new Face(polygon[0],polygon[1],polygon[2],1,true));
     }
 }
-
-
-
-

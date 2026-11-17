@@ -2,7 +2,7 @@
 
 [Back to Wing Flaps](../README.md)
 
-These notes describe the preserved Big Wing v0.20 behavior. The current download is the combined v0.21 candidate; see the project README for its status and installation.
+These notes describe the preserved Big Wing v0.20 behavior. The current download is the combined v0.22 candidate; see the project README for its status and installation.
 
 Install AviassemblyFlaps.dll in Aviassembly/BepInEx/plugins and restart the game. Enable flaps on each Big Wing. Use the lever or [ / ].
 

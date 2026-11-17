@@ -1,14 +1,26 @@
-# Aviassembly Wing Flaps
+# Flap Mod
 
-One plugin contains Big Wing flaps and the Straight Wing hinged flap candidate. Big Wing v0.20 geometry is preserved in the combined v0.21 build.
+One plugin contains Big Wing flaps and the Straight Wing hinged flap candidate. Big Wing v0.20 geometry is preserved in the combined v0.22 build.
 
-**Straight Wing in-game testing is pending.** The combined DLL compiled and passed geometry checks; browser rendering and in-game controls/flight-force checks have not been completed.
+**v0.22 flight retesting is pending.** This update corrects the added force application associated with the reported v0.21 pitch-up and speed loss. The combined DLL compiles and passes geometry and force regression checks; a static render was inspected, but the updated build has not been flight-tested in-game.
+
+## What changed in v0.22
+
+- Straight Wing has a visible 6 mm hinge seam and 4 mm end seams, with both mesh bodies closed. Native ailerons are unchanged.
+- Straight Wing added forces follow the animated flap angle and the measured flap area (about 22.6% of the stock planform).
+- Added lift uses the game's balanced lift origin; drag acts through the rigidbody centre of mass and uses the native drag coefficient.
+- Shared limits cap total added Straight Wing lift at 0.25 g and drag at 0.04 g across the active aircraft's wings. The stock wing forces are unchanged.
+- The combined plugin display name is now **Flap Mod**. The DLL filename and plugin ID stay the same for replacement installs.
+
+![Actual Straight Wing stowed and deployed flap geometry](docs/straight-wing-v0.22.png)
 
 ## Downloads
 
 - **[Download AviassemblyFlaps.dll](https://github.com/HotBowl1080/Aviassembly-Mods/raw/refs/heads/main/Flaps/AviassemblyFlaps.dll)** — the combined game plugin.
 - [Download the wing viewer ZIP](https://github.com/HotBowl1080/Aviassembly-Mods/raw/refs/heads/main/Flaps/aviassembly-wing-preview.zip) — optional browser preview with all 16 native wing parts.
 - [Older viewer versions](archive/) — archived previews for reference.
+
+The current DLL checksum is recorded in [SHA256.txt](SHA256.txt).
 
 ## Install
 
@@ -22,7 +34,7 @@ One plugin contains Big Wing flaps and the Straight Wing hinged flap candidate. 
 | Wing | Flaps | Preview |
 | --- | --- | --- |
 | Big Wing | v0.20 behavior retained in the combined DLL | Modified model and animation |
-| Straight Wing | v0.21 candidate; in-game testing pending | Actual cut mesh and C# poses, 0–30 degrees |
+| Straight Wing | v0.22 candidate; in-game testing pending | Actual cut mesh and C# poses, 0–30 degrees |
 | Other 14 native wing parts | Stock controls retained | Native meshes with child transforms baked in |
 
 ## Controls

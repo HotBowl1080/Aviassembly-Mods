@@ -1,20 +1,4 @@
-Straight Wing v0.21 candidate — validation results
-
-Native asset: StraightWing / sharedassets1.assets, mesh 233.
-332 native vertices; 234 skin triangles and 194 edge triangles.
-Generated cut: 2364 vertices, including 540 flap vertices.
-Flap welded boundary/nonmanifold edges: 0.
-Fixed-shell welded boundary/nonmanifold edges: 0.
-62 deployment poses: 0–30 degrees in both local-down directions.
-Passed: rigid distances, fixed vertices, stowed closure, retraction,
-downward trailing-edge motion, fixed hinge-plane clearance,
-last-setting-only aft/down translation, finite exported pose data.
-All 16 native Wing parts captured across the installed asset files.
-C# poses embedded for Straight Wing; Big Wing v0.20 payload unchanged.
-Passed: unique dropdown entries, single-file ZIP byte identity,
-JavaScript syntax, and unchanged BigWingGeometry/WingDevices source.
-Combined DLL compiled successfully against installed game assemblies.
-SHA256: AD71E94F99A3BDB8E2642B5AC03D7CA22DC0E5F1369CED60E250E3302BD9D5B8
-
-Not checked: browser rendering and in-game settings/flight forces.
-The plugin has not been installed into the game folder.
+Cut vertices=2364, flap vertices=540, flap boundary/nonmanifold edges=0, stationary=0
+PASS visible stowed seam: hinge=6 mm, ends=4 mm; measured flap planform fraction=0.22576015
+PASS 62 mirrored deployment poses, rigid motion, stowed closure and retraction; actual C# poses exported.
+PASS force regression: animated deployment, zero at rest/retracted, area scaling, mirrored lift, native drag coefficient, reverse/cross-flow fade, and shared 0.25 g lift / 0.04 g drag limits across eight wings at six speeds.

@@ -14,6 +14,7 @@ class Program
   var moving=new HashSet<int>(g.moving);var edges=new Dictionary<string,int>();
   foreach(var sub in g.triangles)for(int i=0;i<sub.Count;i+=3){if(moving.Contains(sub[i])!=flap)continue;
    for(int j=0;j<3;j++){string a=Key(g.vertices[sub[i+j]].p),b=Key(g.vertices[sub[i+(j+1)%3]].p);if(a==b)continue;string key=string.CompareOrdinal(a,b)<0?a+"|"+b:b+"|"+a;edges[key]=edges.TryGetValue(key,out int n)?n+1:1;}}
+  foreach(var e in edges.Where(e=>e.Value!=2))Console.WriteLine("Unexpected "+(flap?"flap":"fixed")+" edge count="+e.Value+" "+e.Key);
   return edges.Count(e=>e.Value!=2);
  }
  static void Main(string[] args){try{Run(args);}catch(Exception ex){Console.Error.WriteLine(ex);Environment.ExitCode=1;}}
@@ -27,6 +28,13 @@ class Program
   Check(flapBoundaries==0,"Flap must be watertight after welding seams");
   Check(BoundaryCount(g,false)==0,"Fixed wing must be watertight after cutting");
   var rest=g.vertices.Select(v=>v.p).ToArray();
+  Check(g.FlapAreaFraction>0f && g.FlapAreaFraction<.5f,"Invalid measured flap area");
+  foreach(int id in moving){
+   var q=rest[id];
+   Check((q.x+.1341985f*q.z+.4773043f)/new Vector3(1f,0f,.1341985f).magnitude<=-StraightWingGeometry.HingeGap+.00001f,"Hinge seam clearance lost");
+   Check(q.z>=.18f+StraightWingGeometry.EndGap-.00001f && q.z<=2.85f-StraightWingGeometry.EndGap+.00001f,"End seam clearance lost");
+  }
+  Console.WriteLine("PASS visible stowed seam: hinge="+(StraightWingGeometry.HingeGap*1000f)+" mm, ends="+(StraightWingGeometry.EndGap*1000f)+" mm; measured flap planform fraction="+g.FlapAreaFraction);
   int checks=0;
   foreach(Vector3 down in new[]{Vector3.down,Vector3.up}){
    Vector3 root=down.y<0?StraightWingGeometry.HingeRoot:StraightWingGeometry.ReverseHingeRoot,tip=down.y<0?StraightWingGeometry.HingeTip:StraightWingGeometry.ReverseHingeTip;
@@ -45,7 +53,7 @@ class Program
     for(int i=0;i<rest.Length;i++){
      Check(float.IsFinite(g.positions[i].x)&&float.IsFinite(g.normals[i].x),"Nonfinite pose");
      if(!moving.Contains(i))Check((g.positions[i]-rest[i]).sqrMagnitude<1e-12f,"Stationary wing moved");
-     if(angle==0)Check((g.positions[i]-rest[i]).sqrMagnitude<1e-12f,"Stowed seam does not close");
+     if(angle==0)Check((g.positions[i]-rest[i]).sqrMagnitude<1e-12f,"Stowed panel changed from its designed seam clearance");
     }
     int a=g.moving[0],b=g.moving[g.moving.Count/2];Check(Math.Abs((g.positions[a]-g.positions[b]).magnitude-(rest[a]-rest[b]).magnitude)<.00001f,"Flap deformed");checks++;
    }
@@ -60,9 +68,32 @@ class Program
    var frames=new List<object>();if(flap)for(int angle=0;angle<=30;angle++){g.Pose(angle,Vector3.down);frames.Add(new {angle,positions=Flat(ids.Select(i=>g.positions[i])),normals=Flat(ids.Select(i=>g.normals[i]))});}
    meshes.Add(new {name=flap?"Hinged inboard flap":"Straight Wing fixed shell",role=flap?"flap":"wing",positions,normals,submeshes,frames=flap?frames:null});
   }
-  File.WriteAllText(args[1],JsonSerializer.Serialize(new {schemaVersion=1,wings=new[]{new {id="straight-wing",name="Straight Wing",version="0.21.0",format="raw",hasFlaps=true,meshes}}}));
+  File.WriteAllText(args[1],JsonSerializer.Serialize(new {schemaVersion=1,wings=new[]{new {id="straight-wing",name="Straight Wing",version="0.22.0",format="raw",hasFlaps=true,meshes}}}));
   Console.WriteLine("PASS "+checks+" mirrored deployment poses, rigid motion, stowed closure and retraction; actual C# poses exported.");
+  TestForces(g.FlapAreaFraction);
+ }
+
+ static void TestForces(float area){
+  StraightWingAerodynamics.Forces Force(float speed,float angle,float share=1f,float lift=.01f,float drag=.001f,Vector3? velocity=null,Vector3? span=null,float sign=1f){
+   return StraightWingAerodynamics.Evaluate(velocity??Vector3.forward*speed,Vector3.forward,span??Vector3.right,sign,angle,area,10f,lift,drag,1f,1f,100f,9.81f,share);
+  }
+  Check(Force(50f,0f).lift==Vector3.zero && Force(50f,0f).drag==Vector3.zero,"Retracted flap adds forces");
+  Check(Force(0f,30f).lift==Vector3.zero && Force(0f,30f).drag==Vector3.zero,"Stationary flap adds forces");
+  var full=Force(50f,30f);Check(full.lift.y>0f && full.drag.z<0f,"Incorrect force direction");
+  Check(Math.Abs(full.lift.z)<1e-6f && Math.Abs(full.drag.y)<1e-6f,"Lift/drag directions mixed");
+  Check(Force(50f,1f).lift.magnitude<full.lift.magnitude*.1f,"Deployment applies target force immediately");
+  var half=Force(25f,30f);Check(Math.Abs(full.lift.magnitude/half.lift.magnitude-4f)<.0001f,"Lift no longer scales with dynamic pressure");
+  Check(Force(50f,30f,drag:0f).drag==Vector3.zero,"Drag incorrectly uses lift coefficient");
+  Check((Force(50f,30f,span:Vector3.left,sign:-1f).lift-full.lift).magnitude<1e-6f,"Mirrored wing lift differs");
+  foreach(var flow in new[]{Vector3.back*50f,Vector3.up*50f,Vector3.right*50f}){
+   var f=Force(50f,30f,velocity:flow);Check(f.lift==Vector3.zero && f.drag==Vector3.zero,"Flap adds normal-flight forces in reverse/cross-flow");
+  }
+  foreach(float speed in new[]{5.14444f,15f,30f,60f,120f,1000f}){
+   float sumLift=0f,sumDrag=0f;
+   for(int i=0;i<8;i++){var f=Force(speed,30f,.125f,10f,10f);sumLift+=f.lift.magnitude;sumDrag+=f.drag.magnitude;}
+   Check(sumLift<=100f*9.81f*.25f+.001f && sumDrag<=100f*9.81f*.04f+.001f,"Stacked wings exceeded aircraft force budget");
+  }
+  var low=Force(5.14444f,30f);Check(low.lift.magnitude<100f*9.81f*.01f,"Unrealistic support at 10 knots");
+  Console.WriteLine("PASS force regression: animated deployment, zero at rest/retracted, area scaling, mirrored lift, native drag coefficient, reverse/cross-flow fade, and shared 0.25 g lift / 0.04 g drag limits across eight wings at six speeds.");
  }
 }
-
-
