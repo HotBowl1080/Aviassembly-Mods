@@ -1,6 +1,6 @@
-# Straight Wing development - v0.22 candidate
+# Straight Wing geometry v0.22 / Flap Mod v0.23
 
-Flap Mod combines Straight Wing and Big Wing flaps in AviassemblyFlaps.dll. Big Wing v0.20 geometry, animation and existing force branch are preserved. Straight Wing uses the captured native mesh, its separate native aileron, and actual generated C# preview poses.
+Flap Mod combines Straight Wing and Big Wing flaps in AviassemblyFlaps.dll. The v0.23 plugin adds paid, saved per-wing options and mirrored settings; see [UPGRADES.md](docs/UPGRADES.md). The geometry and force model described below remain the v0.22 implementation. Big Wing v0.20 geometry, animation and existing force branch are preserved. Straight Wing uses the captured native mesh, its separate native aileron, and actual generated C# preview poses.
 
 ## Reported v0.21 problem
 

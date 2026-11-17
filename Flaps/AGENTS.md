@@ -14,3 +14,12 @@
 - Publish current deliverables and user-facing download links on main, organized in the existing project folders. Keep AviassemblyFlaps.dll and the canonical viewer paths stable.
 - Keep historical viewer ZIPs in Flaps/archive; link current downloads from the repository and project READMEs.
 - The user-requested display name is "Flap Mod". Big Wing and Straight Wing flaps share one download. Preserve the existing plugin ID and AviassemblyFlaps.dll filename when updating.
+
+## Upgrade settings, money and saves
+
+- Do not add flap speed limits, overspeed warnings, speed-triggered damage or automatic retraction. The user only allows considering slower extension at higher speed; this update leaves extension speed unchanged.
+- Flaps and eligible spoilers are separate per-wing purchases in the existing wing settings menu. Each option costs 25% of that wing's base price, without compounding. Removing a placed option refunds its price. Big Wing supports both; Straight Wing supports flaps only until actual spoiler geometry is implemented and verified.
+- Mirror settings when the native editor mirror mode is enabled. Quote both wings, validate the total before charging, apply/remove atomically, and create one undo step. Handle centreline/missing partners once and charge only missing purchases.
+- Keep purchased options in native part prices for placement, aircraft value, resale and undo. Creative mode uses native free building. Never charge on restore, mirror-copy creation or loading; new copies are paid through native placement.
+- Persist per-wing options in campaign/design files and undo snapshots using the bounded optional EOF extension. Do not insert bytes into the unframed native wing/part records. Keep native reader cursors and campaign money loading unchanged.
+- Run tests/UpgradeRunner for transaction, mirroring or save changes and build against the installed game. Distinguish adapter tests from actual in-game testing.

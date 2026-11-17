@@ -18,7 +18,7 @@ The export manifest is a build input. Users never load it into the viewer and do
 
 ## Current coverage
 
-All 16 native Wing prefabs are embedded: Big Wing retains its v0.20 modified model, Straight Wing contains its v0.22 candidate cut geometry and actual C# poses, and the other 14 parts retain stock meshes and controls. Tail and canard parts are included. Child transforms are baked into Wing-local coordinates.
+All 16 native Wing prefabs are embedded: Big Wing retains its v0.20 modified model, Straight Wing retains its v0.22 cut geometry and actual C# poses in the v0.23 plugin, and the other 14 parts retain stock meshes and controls. Tail and canard parts are included. Child transforms are baked into Wing-local coordinates.
 
 Use `tools/capture-native-wings.py --game-dir <game> --output native-wings.json --straight-output straight-native.json` with UnityPy and numpy installed. An optional `--dependencies <directory>` supplies those Python packages without installing them globally. Capture reads all installed `.assets` files and identifies actual Wing components.
 

@@ -1,10 +1,21 @@
 # Flap Mod
 
-One plugin contains Big Wing flaps and the Straight Wing hinged flap candidate. Big Wing v0.20 geometry is preserved in the combined v0.22 build.
+One plugin contains Big Wing flaps and the Straight Wing hinged flap candidate. Big Wing v0.20 geometry is preserved in the combined v0.23 build.
 
-**v0.22 flight retesting is pending.** This update corrects the added force application associated with the reported v0.21 pitch-up and speed loss. The combined DLL compiles and passes geometry and force regression checks; a static render was inspected, but the updated build has not been flight-tested in-game.
+**v0.23 in-game verification is pending.** The combined DLL compiles, and transaction/save, geometry and force checks pass. Manual campaign and menu testing is still required.
 
-## What changed in v0.22
+## Paid per-wing upgrades in v0.23
+
+- Buy or remove **Flaps** from the existing wing settings menu: Big Wing and Straight Wing are supported.
+- **Spoilers** are a separate purchase on Big Wing. They can be used without buying flaps.
+- Each option costs **25% of the unmodified wing price**. Deselecting an owned option refunds its price.
+- With the editor's mirror mode on, settings apply to both wings. The pair price is shown and checked before either wing changes; the pair is one undo step.
+- Choices save per wing in campaign saves, aircraft designs and undo snapshots. Reloading restores them without another charge.
+- Upgraded part prices feed the game's aircraft value, placement and resale. Creative mode follows native free building.
+
+See [paid upgrades and saving](docs/UPGRADES.md) for eligibility, pricing and verification details. No speed limits or warnings are included.
+
+## Retained geometry and force changes from v0.22
 
 - Straight Wing has a visible 6 mm hinge seam and 4 mm end seams, with both mesh bodies closed. Native ailerons are unchanged.
 - Straight Wing added forces follow the animated flap angle and the measured flap area (about 22.6% of the stock planform).
@@ -27,14 +38,14 @@ The current DLL checksum is recorded in [SHA256.txt](SHA256.txt).
 1. Close Aviassembly. BepInEx 5 must already be installed and initialized.
 2. Back up your installed `AviassemblyFlaps.dll`.
 3. Copy the downloaded DLL into `Aviassembly/BepInEx/plugins/`, replacing the existing copy. Keep only one copy installed.
-4. Restart the game and enable flaps on each supported wing. Enablement must currently be selected again after loading an aircraft.
+4. Restart the game and open a supported wing's settings menu to purchase or remove Flaps and eligible Spoilers. The selections now save with the aircraft.
 
 ## Wing support
 
 | Wing | Flaps | Preview |
 | --- | --- | --- |
-| Big Wing | v0.20 behavior retained in the combined DLL | Modified model and animation |
-| Straight Wing | v0.22 candidate; in-game testing pending | Actual cut mesh and C# poses, 0–30 degrees |
+| Big Wing | Separate paid flaps/spoilers; v0.20 geometry retained | Modified model and animation |
+| Straight Wing | Paid flaps; v0.22 geometry/forces retained | Actual cut mesh and C# poses, 0–30 degrees |
 | Other 14 native wing parts | Stock controls retained | Native meshes with child transforms baked in |
 
 ## Controls
@@ -48,7 +59,7 @@ Use the shared lever or `[` / `]` to select 0, 10, 20 or 30 degrees.
 | 3 | 20 degrees | Extended | Retracted |
 | 4 | 30 degrees | Extended | Extended |
 
-On Big Wing, hold Control at idle or reverse for spoilers and ground braking. The winglet and native aileron remain separate from flap motion.
+On Big Wing with the Spoilers upgrade purchased, hold Control at idle or reverse for spoilers and ground braking. The winglet and native aileron remain separate from flap motion.
 
 Straight Wing uses one rigid inboard trailing-edge flap and retains its native aileron. Between 20 and 30 degrees, the last setting smoothly adds 25.4 mm aft and 12.7 mm down travel.
 
@@ -64,7 +75,7 @@ Choose a wing from the dropdown, drag to rotate, scroll to zoom, and choose Whol
 | --- | --- |
 | [src](src/) | Plugin source |
 | [build.ps1](build.ps1) | Build against installed game, Unity, BepInEx and Harmony assemblies |
-| [tests](tests/) | Geometry runner and recorded validation results |
+| [tests](tests/) | Upgrade transaction/save tests, geometry runner and validation results |
 | [tools](tools/) | Native wing capture and embedded viewer updates |
 | [STRAIGHT-WING-DEVELOPMENT.md](STRAIGHT-WING-DEVELOPMENT.md) | Straight Wing checks and remaining in-game test steps |
 | [MODEL-UPDATES.md](MODEL-UPDATES.md) | Shared viewer export and update workflow |

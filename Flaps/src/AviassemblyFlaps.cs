@@ -7,7 +7,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-[BepInPlugin("com.andrewstack.aviassembly.flaps", "Flap Mod", "0.22.0")]
+[BepInPlugin("com.andrewstack.aviassembly.flaps", "Flap Mod", "0.23.0")]
 public class FlapsPlugin : BaseUnityPlugin
 {
     internal static int stage { get; private set; }
@@ -18,6 +18,7 @@ public class FlapsPlugin : BaseUnityPlugin
     internal static PlaneContainer activePlane;
     internal static bool spoilersRequested;
     internal static bool Supports(Wing wing) { return wing && (wing.name.StartsWith("BigWing") || wing.name.StartsWith("StraightWing")); }
+    internal static bool SupportsSpoilers(Wing wing) { return wing && wing.name.StartsWith("BigWing"); }
     internal static void LogDetail(string message) { if (instance) instance.Logger.LogInfo(message); }
     void Awake() { instance = this; new Harmony("com.andrewstack.aviassembly.flaps").PatchAll(); }
     void Update()
@@ -41,7 +42,7 @@ public class FlapsPlugin : BaseUnityPlugin
         {
             if (!activePlane || !activePlane.FlightModeInitialized || (flightUI && flightUI.UIOpen)) return false;
             foreach (FlapMarker marker in fittedWings)
-                if (marker && marker.CanOperate(activePlane)) return true;
+                if (marker && marker.HasFlaps && marker.CanOperate(activePlane)) return true;
             return false;
         }
     }
@@ -69,23 +70,34 @@ public class FlapMarker : MonoBehaviour
     PlaneContainer owner;
     BigWingGeometry geometry;
     StraightWingGeometry straight;
+    WingUpgrades upgrades;
     float angle;
     float spoilerFraction;
     internal float SpoilerFraction { get { return spoilerFraction; } }
-    public bool IsReady { get { return geometry != null || straight != null; } }
+    public bool IsReady { get { return enabled && upgrades && upgrades.Options!=WingUpgradeOptions.None && (geometry != null || straight != null); } }
+    internal bool HasFlaps { get { return upgrades && upgrades.HasFlaps; } }
+    internal bool HasSpoilers { get { return upgrades && upgrades.HasSpoilers; } }
     internal bool IsStraight { get { return straight != null; } }
     internal float CurrentAngle { get { return angle; } }
     internal float FlapAreaFraction { get { return straight==null?0f:straight.FlapAreaFraction; } }
-    internal bool CanOperate(PlaneContainer plane) { return owner==plane && isActiveAndEnabled && wing && wing.isActiveAndEnabled && wing.rb; }
+    internal bool CanOperate(PlaneContainer plane) { return IsReady && owner==plane && isActiveAndEnabled && wing && wing.isActiveAndEnabled && wing.rb; }
 
     void Start()
     {
+        upgrades=GetComponent<WingUpgrades>();
+        if(!upgrades || upgrades.Options==WingUpgradeOptions.None){enabled=false;return;}
+        InitializeGeometry();SynchronizeOwnership();
+    }
+    internal bool InitializeGeometry()
+    {
+        if(geometry!=null || straight!=null)return true;
         try {
             wing=GetComponent<Wing>();
+            upgrades=GetComponent<WingUpgrades>();
             filter=GetComponent<MeshFilter>();
-            if (!filter || !filter.sharedMesh || !filter.sharedMesh.isReadable) return;
-            original=filter.sharedMesh;
-            if(original.subMeshCount!=2) return;
+            if (!filter || !filter.sharedMesh) return false;
+            original=upgrades && upgrades.StockMesh?upgrades.StockMesh:filter.sharedMesh;
+            if(!original.isReadable || original.subMeshCount!=2) return false;
             if(wing.name.StartsWith("StraightWing")) {
                 var cut=new StraightWingGeometry(original.vertices,original.normals,original.uv,original.GetTriangles(0),original.GetTriangles(1));
                 cut.Pose(0f,Vector3.down);
@@ -95,9 +107,9 @@ public class FlapMarker : MonoBehaviour
                 for(int i=0;i<2;i++)deployed.SetTriangles(cut.triangles[i].ToArray(),i,false);
                 Bounds box=original.bounds;box.Expand(.9f);deployed.bounds=box;
                 straight=cut;filter.sharedMesh=deployed;owner=GetComponentInParent<PlaneContainer>();
-                FlapsPlugin.activePlane=owner;FlapsPlugin.fittedWings.Add(this);return;
+                FlapsPlugin.activePlane=owner;if(!FlapsPlugin.fittedWings.Contains(this))FlapsPlugin.fittedWings.Add(this);return true;
             }
-            if(!wing.name.StartsWith("BigWing"))return;
+            if(!wing.name.StartsWith("BigWing"))return false;
             var shape=new BigWingGeometry(original.vertices, original.normals, original.uv,
                 original.GetTriangles(0),original.GetTriangles(1));
             shape.Pose(0f,Vector3.down,0f);
@@ -118,15 +130,36 @@ public class FlapMarker : MonoBehaviour
             filter.sharedMesh=deployed;
             owner=GetComponentInParent<PlaneContainer>();
             FlapsPlugin.activePlane=owner;
-            FlapsPlugin.fittedWings.Add(this);
+            if(!FlapsPlugin.fittedWings.Contains(this))FlapsPlugin.fittedWings.Add(this);
+            return true;
         } catch(Exception ex) { FlapsPlugin.LogDetail("Flap geometry setup failed: "+ex); }
+        return false;
+    }
+    internal void SynchronizeOwnership()
+    {
+        upgrades=GetComponent<WingUpgrades>();
+        if(!HasFlaps)angle=0f;
+        if(!HasSpoilers)spoilerFraction=0f;
+        bool installed=upgrades && upgrades.Options!=WingUpgradeOptions.None;
+        enabled=installed;
+        if(!installed){
+            FlapsPlugin.fittedWings.Remove(this);
+            if(filter && original)filter.sharedMesh=original;
+            return;
+        }
+        if(!FlapsPlugin.fittedWings.Contains(this))FlapsPlugin.fittedWings.Add(this);
+        if(!IsReady)return;
+        Vector3 down=owner && owner.FlightModeInitialized && wing.rb?transform.InverseTransformVector(-wing.rb.transform.up).normalized:Vector3.down;
+        if(IsStraight){straight.Pose(angle,down);deployed.vertices=straight.positions;deployed.normals=straight.normals;}
+        else{geometry.Pose(angle,down,spoilerFraction);deployed.vertices=geometry.positions;deployed.normals=geometry.normals;}
+        filter.sharedMesh=deployed;
     }
     void LateUpdate()
     {
         if(!IsReady || !wing) return;
-        bool flying=wing.rb && FlapsPlugin.activePlane && FlapsPlugin.activePlane.FlightModeInitialized;
-        float next=flying ? Mathf.MoveTowards(angle,BigWingPreset.Angle(FlapsPlugin.stage),45f*Time.deltaTime) : 0f;
-        float nextSpoiler=flying && !IsStraight ? Mathf.MoveTowards(spoilerFraction,FlapsPlugin.spoilersRequested?1f:0f,3f*Time.deltaTime) : 0f;
+        bool flying=wing.rb && owner && owner.FlightModeInitialized;
+        float next=flying && HasFlaps ? Mathf.MoveTowards(angle,BigWingPreset.Angle(FlapsPlugin.stage),45f*Time.deltaTime) : 0f;
+        float nextSpoiler=flying && HasSpoilers ? Mathf.MoveTowards(spoilerFraction,FlapsPlugin.spoilersRequested?1f:0f,3f*Time.deltaTime) : 0f;
         if(next==angle && nextSpoiler==spoilerFraction) return;
         angle=next;
         spoilerFraction=nextSpoiler;
@@ -190,85 +223,6 @@ public sealed class FlapOptionCircle : MaskableGraphic
     }
 }
 
-[HarmonyPatch(typeof(PartSettingsPanel), "OpenSettings")]
-public static class WingSettings
-{
-    static FlapOptionCircle Circle(RectTransform parent,bool outline,float size)
-    {
-        var obj=new GameObject(outline ? "Flap outline" : "Flap dot",typeof(RectTransform),typeof(FlapOptionCircle));
-        var graphic=obj.GetComponent<FlapOptionCircle>();
-        graphic.outline=outline;
-        graphic.color=outline ? new Color(.34f,.34f,.34f) : new Color(.12f,.12f,.12f);
-        graphic.raycastTarget=false;
-        RectTransform rect=graphic.rectTransform;
-        rect.SetParent(parent,false); rect.anchorMin=rect.anchorMax=new Vector2(0f,.5f);
-        rect.pivot=new Vector2(.5f,.5f); rect.anchoredPosition=new Vector2(17f,0f); rect.sizeDelta=new Vector2(size,size);
-        return graphic;
-    }
-
-    static bool Prefix(PartSettingsPanel __instance, PlanePart __0, bool __1)
-    {
-        Wing wing = __0 as Wing;
-        if (!FlapsPlugin.Supports(wing) || __1) return true;
-        GameObject template = FlapsPlugin.FindTemplate();
-        if (!template) return true;
-        if (__instance.content) UnityEngine.Object.Destroy(__instance.content.gameObject);
-        GameObject panel = UnityEngine.Object.Instantiate(template);
-        panel.transform.SetParent(__instance.transform, false);
-        panel.transform.localScale = Vector3.one;
-        __instance.content = (RectTransform)panel.transform;
-        EngineSettings settings = panel.GetComponent<EngineSettings>();
-        settings.enabled = false;
-        Toggle source=settings.invertToggle;
-        TMP_Text label=Array.Find(panel.GetComponentsInChildren<TMP_Text>(true), t=>t.name=="InvertLabel");
-        if (!label) throw new InvalidOperationException("Flap Mod settings label is missing");
-        RectTransform body=__instance.content;
-        foreach (LayoutGroup layout in panel.GetComponents<LayoutGroup>()) layout.enabled=false;
-        ContentSizeFitter fitter=panel.GetComponent<ContentSizeFitter>();
-        if(fitter) fitter.enabled=false;
-        for(int i=0;i<body.childCount;i++) body.GetChild(i).gameObject.SetActive(false);
-        body.sizeDelta=new Vector2(154f,32f);
-        var row=new GameObject("Flap Mod wing setting",typeof(RectTransform),typeof(Image),typeof(Toggle));
-        RectTransform line=(RectTransform)row.transform;
-        line.SetParent(body,false);
-        line.anchorMin=Vector2.zero; line.anchorMax=Vector2.one;
-        line.offsetMin=line.offsetMax=Vector2.zero;
-        row.GetComponent<Image>().color=Color.clear;
-        Toggle toggle=row.GetComponent<Toggle>();
-        FlapOptionCircle box=Circle(line,true,20f);
-        FlapOptionCircle tick=Circle(box.rectTransform,false,10f);
-        tick.rectTransform.anchorMin=tick.rectTransform.anchorMax=new Vector2(.5f,.5f);
-        tick.rectTransform.anchoredPosition=Vector2.zero;
-        toggle.targetGraphic=box;
-        toggle.graphic=tick;
-        toggle.colors=source.colors;
-        toggle.toggleTransition=Toggle.ToggleTransition.None;
-        label.transform.SetParent(line,false);
-        label.gameObject.SetActive(true);
-        RectTransform labelRect=label.rectTransform;
-        labelRect.anchorMin=Vector2.zero; labelRect.anchorMax=Vector2.one;
-        labelRect.offsetMin=new Vector2(36f,0f); labelRect.offsetMax=new Vector2(-4f,0f);
-        labelRect.localScale=Vector3.one;
-        label.margin=Vector4.zero;
-        label.text="Enable flaps";
-        label.alignment=TextAlignmentOptions.MidlineLeft;
-        label.enableAutoSizing=true; label.fontSizeMin=12f; label.fontSizeMax=18f;
-        label.raycastTarget=false;
-        toggle.SetIsOnWithoutNotify(wing.GetComponent<FlapMarker>());
-        // The native Toggle can skip its graphic update when the initial value is already false.
-        tick.canvasRenderer.SetAlpha(toggle.isOn ? 1f : 0f);
-
-        toggle.onValueChanged.AddListener(delegate(bool enabled) {
-            if (!wing) return;
-            FlapMarker mark = wing.GetComponent<FlapMarker>();
-            if (enabled && !mark) wing.gameObject.AddComponent<FlapMarker>();
-            if (!enabled && mark) UnityEngine.Object.Destroy(mark);
-        });
-        __instance.Update();
-        return false;
-    }
-}
-
 [HarmonyPatch(typeof(Wing), "UpdatePart")]
 public static class FlapPhysics
 {
@@ -312,7 +266,7 @@ public static class FlapPhysics
             float deceleration=Mathf.Min(2f,groundVelocity.magnitude/(Time.fixedDeltaTime*Mathf.Max(1,FlapsPlugin.fittedWings.Count)));
             __instance.rb.AddForce(-groundVelocity.normalized*deceleration*spoiler,ForceMode.Acceleration);
         }
-        if(FlapsPlugin.stage==0) return;
+        if(!marker.HasFlaps || FlapsPlugin.stage==0) return;
         Vector3 velocity = __instance.rb.GetPointVelocity(__instance.orientation.position);
         float speed = velocity.magnitude;
         if (speed < 0.1f) return;

@@ -1,0 +1,2 @@
+Upgrade save extension was rejected: Unsupported Flap Mod save version
+PASS 147 upgrade assertions: per-wing 25% prices, independent options, atomic mirrored purchases/refunds, campaign debits/refunds, exact affordability, creative mode, placement/copy/resale, undo, old/new save round-trips, cursor/prefix preservation, malformed metadata rejection.
