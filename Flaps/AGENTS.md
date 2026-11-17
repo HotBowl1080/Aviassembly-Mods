@@ -8,3 +8,9 @@
 - The canonical viewer's Wing dropdown must cover every wing in the actual game part catalog, including stock wings without added flaps. Discover the inventory from game assets; do not invent names or claim loaded-object captures are necessarily the complete catalog.
 - Capture stock wings before enabling flap modifiers. Include native child ailerons and bake their transforms correctly.
 - Validate the actual mesh and both mirrored orientations, stowed closure, hinge motion, last-setting travel, retraction, device highlighting and wing selection. If compilation or rendering is unavailable, state that limitation and do not claim those checks passed.
+
+## Publishing and planned naming
+
+- Publish current deliverables and user-facing download links on main, organized in the existing project folders. Keep AviassemblyFlaps.dll and the canonical viewer paths stable.
+- Keep historical viewer ZIPs in Flaps/archive; link current downloads from the repository and project READMEs.
+- After the next round of mod behavior changes, apply the user-requested display name "Flap Mod" and present Big Wing and Straight Wing flaps together in the same download. This repository cleanup does not perform that rename.

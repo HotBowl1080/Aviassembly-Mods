@@ -1,5 +1,13 @@
 # Aviassembly Editor Tools 0.7.0
 
+## Download and install
+
+[Download Aviassembly.EditorTools.dll](https://github.com/HotBowl1080/Aviassembly-Mods/raw/refs/heads/main/EditorTools/Aviassembly.EditorTools.dll) from main. Close Aviassembly, back up the previous plugin, and place the DLL in `Aviassembly/BepInEx/plugins/Aviassembly.EditorTools/`. BepInEx 5 must already be installed and initialized. Keep only one installed copy of this plugin.
+
+If you download this project folder, [Install.ps1](Install.ps1) can install it with backups and checksum checks: `./Install.ps1 -GameDir "<Aviassembly installation>"`.
+
+Source is in [src](src/), validation is in [tests](tests/), and the original development brief is in [docs](docs/).
+
 Focus Selected, multi-selection, Precision Edit, procedural shape precision, Hide Parts with X-ray, and propeller clearance are included in one plugin
 
 The readout is a prominent bold text line below the top-right controls, with a black outline and no background box: Direction (X): 0.35 m or Rotation (Z): 33.5 degrees
