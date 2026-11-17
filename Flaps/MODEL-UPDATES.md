@@ -18,4 +18,10 @@ The export manifest is a build input. Users never load it into the viewer and do
 
 ## Current coverage
 
-Big Wing v0.20 is embedded and available. Straight Wing is listed but has no captured model yet. Other native wing assets must be captured before their real entries can be added. The computer environment and installed game assets were unavailable during this viewer organization change.
+All 16 native Wing prefabs are embedded: Big Wing retains its v0.20 modified model, Straight Wing contains its v0.21 candidate cut geometry and actual C# poses, and the other 14 parts retain stock meshes and controls. Tail and canard parts are included. Child transforms are baked into Wing-local coordinates.
+
+Use `tools/capture-native-wings.py --game-dir <game> --output native-wings.json --straight-output straight-native.json` with UnityPy and numpy installed. An optional `--dependencies <directory>` supplies those Python packages without installing them globally. Capture reads all installed `.assets` files and identifies actual Wing components.
+
+Run `dotnet run --project tests/GeometryRunner -- straight-native.json straight-poses.json` from Flaps to validate and export the actual modified Straight Wing poses. Append the stock Straight Wing child meshes from the native capture to that modified entry, replace its entry in the stock manifest, and pass the combined manifest to `tools/update-wing-preview.mjs`. Big Wing is deliberately excluded from native capture updates so its released adapter remains intact.
+
+Compile with `build.ps1 -GameDir <game>`. Browser and in-game validation remain pending for the v0.21 candidate. See STRAIGHT-WING-DEVELOPMENT.md for exact completed checks and the remaining handoff.

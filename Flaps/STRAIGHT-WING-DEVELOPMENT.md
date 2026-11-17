@@ -1,26 +1,22 @@
-# Straight Wing development
+# Straight Wing development — v0.21 candidate
 
-This branch retains the latest shared wing viewer from main and the released Big Wing v0.20 DLL.
+Implemented on the actual installed StraightWing mesh: a rigid inboard trailing-edge flap, closed cut surfaces, native aileron preserved, shared enable toggle/selector/physics integration, and 25.4 mm aft plus 12.7 mm down travel introduced only between 20 and 30 degrees. The offset hinge follows the stock taper and clears the skin in both mirrored deployment directions. Big Wing v0.20 geometry source and embedded preview payload remain unchanged.
 
-Prepared source: StraightWingFlapMotion.cs provides rigid hinge rotation and a final-setting-only small aft/down shift. WingCatalogExporter.cs captures loaded native wing meshes with child ailerons and baked transforms.
+The combined DLL compiles against the installed game, Unity, BepInEx and Harmony assemblies. It has not been installed into the game folder. This is a candidate for in-game testing, not a claim of completed flight validation.
 
-The only active viewer is aviassembly-wing-preview.html. It uses an embedded model registry and a Wing dropdown. Do not use a separate catalog-loading viewer. See MODEL-UPDATES.md for the build-time export/embed workflow.
+## Completed checks
 
-Still blocked by the unavailable computer environment: capture the actual Straight Wing and remaining native wing assets; calibrate the user's marked inboard flap region; cut and close the flap mesh; register it with the shared enable toggle, selector and physics; export actual modified poses into the shared HTML; compile and verify the combined mod. Finish and verify Straight Wing before enabling modifications on the next suitable wing; expansion to additional wings is now authorized.
+- Captured all 16 native Wing prefabs across the installed asset files, including tail and canard parts, with child transforms baked into the models.
+- Both flap and fixed shell have zero boundary/nonmanifold edges after seam welding.
+- Checked 62 deployment poses, 0 through 30 degrees with both local-down directions: rigid distances, fixed vertices, downward trailing-edge motion, clearance of the fixed hinge plane, normals/positions, stowed closure and retraction.
+- Checked that extra translation is absent through 20 degrees and reaches the specified small travel at 30 degrees.
+- Exported the actual C# positions/normals at every degree into the single canonical HTML. Other wings use native stock meshes; Big Wing retains its existing v0.20 adapter.
+- Verified unique dropdown entries, matching one-file ZIP contents, JavaScript syntax, and unchanged Big Wing source/payload.
 
-This is not a Straight Wing release. Its entry remains explicitly pending until actual native mesh data is available. The current Big Wing model and released DLL remain v0.20.
+## Remaining verification
 
-## Resume checkpoint — 2026-11-16
+Browser inspection was unavailable because the local computer-use app-server helper could not launch. No browser rendering or in-game enablement/flight-force test is claimed. The game installation is readable but outside this task's writable directories; the DLL was built in the project workspace.
 
-A command runner is now available in a Linux workspace, but the Windows game installation at `E:\SteamLibrary\steamapps\common\Aviassembly` is not mounted. No native wing captures or game assemblies were found in the available workspace, temporary files or home directory. Neither `dotnet` nor `mcs` is on PATH. Repository access alone does not provide the missing native geometry or permit in-game validation.
+Close the game, back up the installed plugin, copy this branch's AviassemblyFlaps.dll into BepInEx/plugins, restart, enable Straight Wing flaps, and check both sides at all settings, selector visibility, ailerons, retraction, disabling flaps and Big Wing behavior. Finish those checks before starting another wing.
 
-The released DLL and viewer geometry are unchanged. No Straight Wing mesh cut, runtime integration, combined compilation or visual/flight validation has been completed by this checkpoint.
-
-Resume in an environment with the installed game assets, Unity/game assembly references and a C# compiler:
-
-1. Check for newer work and capture the actual complete game wing inventory before enabling modifiers. Include native child control surfaces and baked transforms; loaded objects alone may omit catalog parts.
-2. Fit and cut the marked Straight Wing inboard flap, close all cut surfaces, and use the prepared hinge motion with small aft/down travel at the final setting only.
-3. Integrate the flap with the shared enable toggle, selector and physics. Preserve Big Wing v0.20 and native controls.
-4. Export the actual modified poses into the canonical viewer. Add every actual game wing to its dropdown using real native captures, keeping stock entries without flaps and preserving existing entries. Regenerate the matching ZIP.
-5. Compile the combined DLL and verify mirrored orientations, stowed closure, selector settings, retraction, highlighting, wing selection and regressions. Keep source, released binary and preview geometry synchronized.
-6. Only after Straight Wing passes those checks, implement and verify the next suitable wing, repeating the same capture/build/preview workflow.
+Further wing expansion is authorized one wing at a time after Straight Wing verification. Keep using the shared viewer and replace each wing entry from its actual generated mod poses as it changes.

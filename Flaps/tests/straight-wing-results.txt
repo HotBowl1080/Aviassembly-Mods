@@ -1,0 +1,20 @@
+Straight Wing v0.21 candidate — validation results
+
+Native asset: StraightWing / sharedassets1.assets, mesh 233.
+332 native vertices; 234 skin triangles and 194 edge triangles.
+Generated cut: 2364 vertices, including 540 flap vertices.
+Flap welded boundary/nonmanifold edges: 0.
+Fixed-shell welded boundary/nonmanifold edges: 0.
+62 deployment poses: 0–30 degrees in both local-down directions.
+Passed: rigid distances, fixed vertices, stowed closure, retraction,
+downward trailing-edge motion, fixed hinge-plane clearance,
+last-setting-only aft/down translation, finite exported pose data.
+All 16 native Wing parts captured across the installed asset files.
+C# poses embedded for Straight Wing; Big Wing v0.20 payload unchanged.
+Passed: unique dropdown entries, single-file ZIP byte identity,
+JavaScript syntax, and unchanged BigWingGeometry/WingDevices source.
+Combined DLL compiled successfully against installed game assemblies.
+SHA256: AD71E94F99A3BDB8E2642B5AC03D7CA22DC0E5F1369CED60E250E3302BD9D5B8
+
+Not checked: browser rendering and in-game settings/flight forces.
+The plugin has not been installed into the game folder.

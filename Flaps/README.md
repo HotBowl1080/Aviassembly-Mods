@@ -1,12 +1,20 @@
 # Aviassembly Wing Flaps
 
-This is the shared flap project for the game's wings. The release DLL currently supports Big Wing v0.20. Straight Wing flap motion is prepared on the [development branch](https://github.com/HotBowl1080/Aviassembly-Mods/tree/straight-wing-flaps), but its actual mesh integration and compiled release are pending.
+This is the shared flap project for the game's wings. The v0.21 candidate DLL on this branch adds Straight Wing hinged flaps and preserves the Big Wing v0.20 geometry. It compiles against the installed game, Unity, BepInEx and Harmony assemblies. In-game testing remains pending; this candidate has not been installed in the game folder.
 
 | Wing | Released in-game flaps | Embedded preview |
 | --- | --- | --- |
-| Big Wing | v0.20 | Current modified model |
-| Straight Wing | In development | Listed as pending; native model capture required |
-| Other wing types | No flap modifications planned in this step | Native model capture required |
+| Big Wing | v0.20 behavior retained | Current modified model |
+| Straight Wing | v0.21 candidate; in-game test pending | Actual cut mesh and C# poses, 0–30 degrees |
+| Other 14 native Wing parts | Stock controls retained | Actual native meshes and baked child transforms |
+
+## Straight Wing v0.21 candidate
+
+Enable flaps on Straight Wing with the same setting used for Big Wing. Use the shared lever or `[ / ]` for 0, 10, 20 and 30 degrees. The inboard trailing edge rotates as one rigid flap. The last setting adds 25.4 mm aft and 12.7 mm down travel, smoothly introduced between 20 and 30 degrees. The native aileron remains separate. Straight Wing does not acquire Big Wing's slats, leading-edge flaps or spoilers.
+
+The cutter checks the installed native mesh signature before modifying it. Both the flap and fixed shell are closed. Checks on actual source geometry cover 62 poses in both deployment directions, rigid motion, hinge-plane clearance, stowed closure, retraction, fixed-vertex preservation and last-setting-only translation. Those checks do not substitute for in-game testing of enablement, flight forces or aircraft loading. Finish that check before implementing the next wing.
+
+Build with `./build.ps1 -GameDir '<Aviassembly installation>'`. To install manually, close the game, back up the existing plugin and replace `BepInEx/plugins/AviassemblyFlaps.dll` with this branch's DLL. Enablement still needs to be selected after loading an aircraft.
 
 ## Big Wing v0.20
 
@@ -27,7 +35,7 @@ Both trailing-edge flap members connect beneath the stationary cover. The main c
 
 ## Model preview
 
-[Download the wing viewer ZIP](https://github.com/HotBowl1080/Aviassembly-Mods/raw/refs/heads/main/Flaps/aviassembly-wing-preview.zip). Extract All, then open aviassembly-wing-preview.html in Chrome or Edge. It is one HTML file with a Wing dropdown; all included model data is embedded. No separate catalog or model files are needed. Internet access is still needed for the rendering library.
+[Download the wing viewer ZIP](https://github.com/HotBowl1080/Aviassembly-Mods/raw/refs/heads/straight-wing-flaps/Flaps/aviassembly-wing-preview.zip). Extract All, then open aviassembly-wing-preview.html in Chrome or Edge. Its Wing dropdown includes all 16 native Wing prefabs found across the installed game's asset files, including tail and canard parts. All model data is embedded. No separate catalog or model files are needed. Internet access is still needed for the rendering library.
 
 Select a wing, drag to rotate, scroll to zoom, and choose Whole wing or an available device view. The native aileron is shown at neutral. The Flaps highlight includes both moving connectors. The viewer uses the generated mod mesh for every degree of travel.
 

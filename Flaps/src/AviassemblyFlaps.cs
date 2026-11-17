@@ -7,7 +7,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-[BepInPlugin("com.andrewstack.aviassembly.flaps", "Aviassembly Flaps", "0.20.0")]
+[BepInPlugin("com.andrewstack.aviassembly.flaps", "Aviassembly Flaps", "0.21.0")]
 public class FlapsPlugin : BaseUnityPlugin
 {
     internal static int stage { get; private set; }
@@ -17,6 +17,7 @@ public class FlapsPlugin : BaseUnityPlugin
     internal static FlapsPlugin instance;
     internal static PlaneContainer activePlane;
     internal static bool spoilersRequested;
+    internal static bool Supports(Wing wing) { return wing && (wing.name.StartsWith("BigWing") || wing.name.StartsWith("StraightWing")); }
     internal static void LogDetail(string message) { if (instance) instance.Logger.LogInfo(message); }
     void Awake() { instance = this; new Harmony("com.andrewstack.aviassembly.flaps").PatchAll(); }
     void Update()
@@ -67,10 +68,12 @@ public class FlapMarker : MonoBehaviour
     Wing wing;
     PlaneContainer owner;
     BigWingGeometry geometry;
+    StraightWingGeometry straight;
     float angle;
     float spoilerFraction;
     internal float SpoilerFraction { get { return spoilerFraction; } }
-    public bool IsReady { get { return geometry != null; } }
+    public bool IsReady { get { return geometry != null || straight != null; } }
+    internal bool IsStraight { get { return straight != null; } }
     internal bool CanOperate(PlaneContainer plane) { return owner==plane && isActiveAndEnabled && wing && wing.isActiveAndEnabled && wing.rb; }
 
     void Start()
@@ -81,6 +84,18 @@ public class FlapMarker : MonoBehaviour
             if (!filter || !filter.sharedMesh || !filter.sharedMesh.isReadable) return;
             original=filter.sharedMesh;
             if(original.subMeshCount!=2) return;
+            if(wing.name.StartsWith("StraightWing")) {
+                var cut=new StraightWingGeometry(original.vertices,original.normals,original.uv,original.GetTriangles(0),original.GetTriangles(1));
+                cut.Pose(0f,Vector3.down);
+                var uv=new Vector2[cut.vertices.Count];for(int i=0;i<uv.Length;i++)uv[i]=cut.vertices[i].uv;
+                deployed=new Mesh();deployed.name="Straight Wing hinged flap";deployed.MarkDynamic();
+                deployed.vertices=cut.positions;deployed.normals=cut.normals;deployed.uv=uv;deployed.subMeshCount=2;
+                for(int i=0;i<2;i++)deployed.SetTriangles(cut.triangles[i].ToArray(),i,false);
+                Bounds box=original.bounds;box.Expand(.9f);deployed.bounds=box;
+                straight=cut;filter.sharedMesh=deployed;owner=GetComponentInParent<PlaneContainer>();
+                FlapsPlugin.activePlane=owner;FlapsPlugin.fittedWings.Add(this);return;
+            }
+            if(!wing.name.StartsWith("BigWing"))return;
             var shape=new BigWingGeometry(original.vertices, original.normals, original.uv,
                 original.GetTriangles(0),original.GetTriangles(1));
             shape.Pose(0f,Vector3.down,0f);
@@ -109,14 +124,13 @@ public class FlapMarker : MonoBehaviour
         if(!IsReady || !wing) return;
         bool flying=wing.rb && FlapsPlugin.activePlane && FlapsPlugin.activePlane.FlightModeInitialized;
         float next=flying ? Mathf.MoveTowards(angle,BigWingPreset.Angle(FlapsPlugin.stage),45f*Time.deltaTime) : 0f;
-        float nextSpoiler=flying ? Mathf.MoveTowards(spoilerFraction,FlapsPlugin.spoilersRequested?1f:0f,3f*Time.deltaTime) : 0f;
+        float nextSpoiler=flying && !IsStraight ? Mathf.MoveTowards(spoilerFraction,FlapsPlugin.spoilersRequested?1f:0f,3f*Time.deltaTime) : 0f;
         if(next==angle && nextSpoiler==spoilerFraction) return;
         angle=next;
         spoilerFraction=nextSpoiler;
         Vector3 localDown=flying?transform.InverseTransformVector(-wing.rb.transform.up).normalized:Vector3.down;
-        geometry.Pose(angle,localDown,spoilerFraction);
-        deployed.vertices=geometry.positions;
-        deployed.normals=geometry.normals;
+        if(IsStraight){straight.Pose(angle,localDown);deployed.vertices=straight.positions;deployed.normals=straight.normals;}
+        else{geometry.Pose(angle,localDown,spoilerFraction);deployed.vertices=geometry.positions;deployed.normals=geometry.normals;}
         if(filter.sharedMesh!=deployed) filter.sharedMesh=deployed;
     }
     void OnDestroy()
@@ -134,7 +148,7 @@ public static class EnableWingSettings
     {
         if (!__instance.placer || !__instance.placer.currentSelectedPart) return;
         Wing wing = __instance.placer.currentSelectedPart.GetComponentInChildren<Wing>();
-        if (wing && wing.name.StartsWith("BigWing") && wing.GetComponentInChildren<WingVisual>() && !wing.settingsPrefab)
+        if (FlapsPlugin.Supports(wing) && wing.GetComponentInChildren<WingVisual>() && !wing.settingsPrefab)
             wing.settingsPrefab = FlapsPlugin.FindTemplate();
     }
 }
@@ -193,7 +207,7 @@ public static class WingSettings
     static bool Prefix(PartSettingsPanel __instance, PlanePart __0, bool __1)
     {
         Wing wing = __0 as Wing;
-        if (!wing || !wing.name.StartsWith("BigWing") || __1) return true;
+        if (!FlapsPlugin.Supports(wing) || __1) return true;
         GameObject template = FlapsPlugin.FindTemplate();
         if (!template) return true;
         if (__instance.content) UnityEngine.Object.Destroy(__instance.content.gameObject);
@@ -281,7 +295,7 @@ public static class FlapPhysics
         if (speed < 0.1f) return;
         float fraction = BigWingPreset.Angle(FlapsPlugin.stage) / 30f;
         float strength = speed * speed * __instance.GetWingArea() * __instance.liftForce * __0.GravityMultiplier * __0.liftMultiplier;
-        float slatLift=.08f*BigWingPreset.SlatExtension(BigWingPreset.Angle(FlapsPlugin.stage));
+        float slatLift=marker.IsStraight?0f:.08f*BigWingPreset.SlatExtension(BigWingPreset.Angle(FlapsPlugin.stage));
         Vector3 lift = Vector3.ProjectOnPlane(__instance.rb.transform.up, velocity.normalized).normalized * strength * (.25f*fraction+slatLift)*(1f-.55f*spoiler);
         Vector3 drag = -velocity.normalized * strength * 0.18f * fraction;
         __instance.rb.AddForceAtPosition(lift + drag, __instance.orientation.position);

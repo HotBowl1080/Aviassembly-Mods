@@ -45,14 +45,16 @@ internal sealed class StraightWingFlapMotion
         Vector3 down=Vector3.ProjectOnPlane(localDown,axis).normalized;
         if(down.sqrMagnitude<.9f)throw new ArgumentException("Down is parallel to the flap hinge");
         float sign=Vector3.Dot(Vector3.Cross(aft,down),axis)>=0f?1f:-1f;
-        Quaternion rotation=Quaternion.AngleAxis(sign*angle,axis);
+        double radians=sign*angle*Math.PI/180.0;
+        float cosine=(float)Math.Cos(radians),sine=(float)Math.Sin(radians);
         float blend=Mathf.Clamp01((angle-20f)/10f);
         blend=blend*blend*(3f-2f*blend);
         Vector3 travel=(aft*lastSettingAft+down*lastSettingDown)*blend;
         foreach(int id in moving)
         {
-            positions[id]=hinge+rotation*(restPositions[id]-hinge)+travel;
-            normals[id]=(rotation*restNormals[id]).normalized;
+            Vector3 p=restPositions[id]-hinge,n=restNormals[id];
+            positions[id]=hinge+p*cosine+Vector3.Cross(axis,p)*sine+axis*Vector3.Dot(axis,p)*(1f-cosine)+travel;
+            normals[id]=(n*cosine+Vector3.Cross(axis,n)*sine+axis*Vector3.Dot(axis,n)*(1f-cosine)).normalized;
         }
     }
 }
