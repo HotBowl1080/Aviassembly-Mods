@@ -17,17 +17,6 @@ internal static class WingUpgradeDesignValue
     }
 }
 
-[HarmonyPatch(typeof(PlaneStorage),"GetPlaneCost")]
-internal static class PricePurchasedWingOptions
-{
-    static void Prefix(PlaneStorage __instance){WingUpgradeDesignValue.Synchronize(__instance.transform);}
-}
-
-[HarmonyPatch(typeof(PlaneContainer),"GetPlanePrice")]
-internal static class ShowPurchasedWingValue
-{
-    static void Prefix(PlaneContainer __instance){WingUpgradeDesignValue.Synchronize(__instance.transform);}
-}
 
 [HarmonyPatch(typeof(PlaneStorage),"LoadFromFile")]
 internal static class ReconcilePurchasedDesign
@@ -37,6 +26,7 @@ internal static class ReconcilePurchasedDesign
         __state=null;if(!MoneyManager.Instance || !GameManager.Instance)return;
         // Preserve the current aircraft as well as cash so an underquoted
         // design cannot install unaffordable upgrades before its value is known.
+        WingUpgradeDesignValue.Synchronize(__instance.transform);
         __state=new WingUpgradeDesignValue.LoadState{
             cash=MoneyManager.Instance.money,value=__instance.GetPlaneCost(),
             creative=GameManager.Instance.gameModeData.creativeMode,before=__instance.SaveToStream()};
@@ -45,6 +35,7 @@ internal static class ReconcilePurchasedDesign
     {
         if(__state==null)return;
         if(!__result){MoneyManager.Instance.money=__state.cash;__state.completed=true;return;}
+        WingUpgradeDesignValue.Synchronize(__instance.transform);
         float cash;
         if(WingUpgradeEconomy.TryLoadBalance(__state.cash,__state.value,__instance.GetPlaneCost(),__state.creative,out cash)){
             // The authoritative value is the completely restored aircraft,

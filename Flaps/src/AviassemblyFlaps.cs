@@ -7,7 +7,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-[BepInPlugin("com.andrewstack.aviassembly.flaps", "Flap Mod", "0.24.0")]
+[BepInPlugin("com.andrewstack.aviassembly.flaps", "Flap Mod", "0.25.0")]
 public class FlapsPlugin : BaseUnityPlugin
 {
     internal static int stage { get; private set; }

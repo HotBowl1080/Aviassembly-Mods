@@ -2,7 +2,9 @@
 
 Eight wings support paid flaps. Big Wing always shows the updated model; its fixed center plate no longer overlaps an extra moving panel. Wing geometry is prepared once and reused on upgrade and undo.
 
-**v0.24 in-game verification is pending.** The combined DLL compiles, and transaction/save, geometry and force checks pass. Manual campaign and menu testing is still required.
+Hover over an unlocked aircraft in the load menu to see the number and value of saved flaps and spoilers. Upgrade pricing no longer rescans the aircraft for each visible row every frame.
+
+**v0.25 in-game verification is pending.** The combined DLL compiles, and transaction/save, geometry and force checks pass. Manual campaign and menu testing is still required.
 
 ## Paid per-wing upgrades in v0.24
 

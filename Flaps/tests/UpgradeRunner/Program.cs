@@ -26,7 +26,20 @@ class Program {
  }
  static void Patch(Type type,string method,params object[] args){type.GetMethod(method,BindingFlags.NonPublic|BindingFlags.Static).Invoke(null,args);}
  static void Main(){try{Transactions();Mirroring();Snapshots();CodecSafety();Console.WriteLine("PASS "+assertions+" upgrade assertions: per-wing 25% prices, independent options, atomic mirrored purchases/refunds, campaign debits/refunds, exact affordability, creative mode, placement/copy/resale, undo, old/new save round-trips, cursor/prefix preservation, malformed metadata rejection.");}catch(Exception e){Console.Error.WriteLine(e);Environment.ExitCode=1;}}
+ static void Receipts(){
+  using(var stream=new MemoryStream()){
+   stream.Write(new byte[20],0,20);Check(WingUpgradeReceipt.Read(stream)==null,"Stock design gets no receipt");
+   var pair=new List<WingUpgradeSaveCodec.Record>{
+    new WingUpgradeSaveCodec.Record{partIndex=0,wingIndex=0,wingType=1,basePrice=2500,options=F|S},
+    new WingUpgradeSaveCodec.Record{partIndex=1,wingIndex=0,wingType=2,basePrice=500,options=F}};
+   WingUpgradeSaveCodec.Append(stream,pair);stream.Position=3;
+   var text=WingUpgradeReceipt.Read(stream);Check(stream.Position==3,"Inspection preserves stream position");
+   Check(text.Contains("Flaps (2):  $750"),"Independent flap prices");Check(text.Contains("Spoilers (1):  $625"),"Spoilers counted separately");
+   Check(text.EndsWith(1375d.ToString("#,0.##")),"Combined value includes both options");
+  }
+ }
  static void DesignLoads(){
+  Receipts();
   var ctx=new Context("SmallRecreationalWing");Check(ctx.Set(F,true),"Install recreational flaps");Check(!ctx.Set(S,true),"Reject recreational spoilers");
   var records=WingUpgradePersistence.Capture(ctx.storage);Check(records.Single().wingType==3,"Distinct saved wing identity");
   var copy=new Context("SmallRecreationalWing");WingUpgradePersistence.Restore(copy.storage,records);Near(copy.part.price,500,"Restored flap price");

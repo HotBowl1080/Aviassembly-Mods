@@ -42,4 +42,6 @@ No flap speed limits, overspeed warnings, damage or automatic retraction are add
 
 The upgrade runner exercises the production transaction and persistence classes using small in-memory game adapters. Its checks cover exact affordability, separate options, mixed ownership, atomic mirrored purchases/refunds, creative mode, unpaid previews, copy prices, native-style resale and undo, legacy saves, campaign/design snapshot round-trips, unchanged native prefixes, reader cursor restoration and malformed records.
 
-The combined DLL also compiles against the installed game, and its 13 Harmony targets and injected fields match the installed assemblies. Geometry and force regression checks still pass. This is not an in-game campaign/UI test: verify the menu, native mirror matching, purchases, refunds, undo and reload on a test aircraft before treating the candidate as fully validated in-game.
+Hover over an unlocked saved aircraft in the load menu to see the flap and spoiler counts and the value of each. This reads the design without changing it. Stock designs show no extra tooltip. The game still calculates the amount due when replacing an aircraft.
+
+The v0.25 DLL compiles against the installed game. Upgrade checks use adapters; the tooltip layout and campaign transactions still need a live game check.
