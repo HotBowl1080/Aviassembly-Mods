@@ -1,4 +1,4 @@
-# Aviassembly Atmosphere 0.14.0
+# Aviassembly Atmosphere 0.14.1
 
 [Download Aviassembly.Atmosphere.dll](https://github.com/HotBowl1080/Aviassembly-Mods/raw/refs/heads/main/Atmosphere/Aviassembly.Atmosphere.dll) · [SHA256](SHA256.txt)
 
@@ -18,6 +18,10 @@ Press **O**, then **Time of day**. A new clock starts at noon. At **1×**, one r
 Choose **Dawn** (06:00), **Noon** (12:00), **Dusk** (18:00) or **Midnight** (00:00), or step an hour earlier or later. **Lock time** holds the current lighting while you fly. You can still select another hour while locked. **Unlock time** resumes from that hour. **Slower** and **Faster** select 0.25×, 0.5×, 1×, 2×, 4× or 8×. The panel shows how many real minutes a day will take at the selected speed.
 
 Clock controls take effect immediately. The speed changes the clock independently of aircraft physics and weather. Time carries across flights and game restarts, and pauses during loading or a game pause. Flight lighting follows the clock, including the sun, terrain, water, clouds and fog. The lit runway fixtures remain visible at night.
+
+At night the runway markings, aircraft and nearby terrain pick up soft moonlight. Rain and fog still obscure distant scenery, and grass by the runway darkens with the surrounding ground.
+
+[Compare the same runway at midnight in heavy rain](Screenshots/night-runway-comparison.jpg).
 
 ## Flying the approach
 
