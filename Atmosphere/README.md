@@ -1,4 +1,4 @@
-# Aviassembly Atmosphere 0.12.2
+# Aviassembly Atmosphere 0.13.0
 
 [Download Aviassembly.Atmosphere.dll](https://github.com/HotBowl1080/Aviassembly-Mods/raw/refs/heads/main/Atmosphere/Aviassembly.Atmosphere.dll) · [SHA256](SHA256.txt)
 
@@ -10,6 +10,14 @@ Manual weather takes effect when you press **Apply**. In heavy fog the ocean fad
 Each paved runway end has a widening corridor cleared of generated trees and rocks. The end requiring less terrain work normally has a full MALSR with five outer flashers running toward the threshold. The opposite end normally has steady bars, and long runways with two clear approaches can have full systems in both directions. Lamp housings sit on crossarms or posts anchored to terrain or seabed.
 
 The end markers sit outside the shoulders. They show green on arrival and red from the runway, with at least 60 game units clear down the center beyond each end. PAPI units have a solid hooded cabinet, a recessed lens and three ground-mounted footplates. The mod checks the four sightlines for fences and buildings, preferring the left shoulder and using the right when needed. Two white and two red indicate a 3° approach. More red means low, and more white means high.
+
+## Flying the approach
+
+The top cue shows your ground track (**TRK**), the bearing to the next gate (**BRG**), and the altitude for that gate. **Fly left 12 u** means move 12 game units left to regain the course. **High** and **low** compare your current altitude with the descent line at your position between gates. When you are outside the checked corridor, the cue shows the course to rejoin before giving vertical guidance again.
+
+If you miss a gate, it stays active and the cue shows the heading to cross it. Open the arrow for **Go around** to climb and turn back toward the entry, or **Change approach** to select another arrival. Cancelling a search keeps your present gate. The return and the arrival each have their own gate count. At the starting Base, the return uses wider gates and favors gentler climbs and wider turns when terrain allows.
+
+After crossing the threshold on the selected approach, the cue shows runway distance remaining. Touching down in the selected direction clears guidance once the aircraft settles, even if you skipped a gate. Flying beyond the runway leaves **Go around** available.
 
 ## Sandbox map and runway approaches
 
