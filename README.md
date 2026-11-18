@@ -6,7 +6,7 @@ Mods and development tools for Aviassembly. Current downloads live on `main`, or
 
 | Download | What it contains | Status |
 | --- | --- | --- |
-| [Flap Mod DLL](https://github.com/HotBowl1080/Aviassembly-Mods/raw/refs/heads/main/Flaps/AviassemblyFlaps.dll) | Big Wing and Straight Wing flaps in one plugin | v0.23 candidate; paid saved upgrades and mirrored settings |
+| [Flap Mod DLL](https://github.com/HotBowl1080/Aviassembly-Mods/raw/refs/heads/main/Flaps/AviassemblyFlaps.dll) | Flaps for eight wings, plus Big Wing spoilers | v0.24 candidate; cached models and saved-aircraft pricing |
 | [Editor Tools DLL](https://github.com/HotBowl1080/Aviassembly-Mods/raw/refs/heads/main/EditorTools/Aviassembly.EditorTools.dll) | Camera focus, precision editing, multi-selection, part hiding and propeller clearance | v0.7.0 |
 | [Wing viewer ZIP](https://github.com/HotBowl1080/Aviassembly-Mods/raw/refs/heads/main/Flaps/aviassembly-wing-preview.zip) | One HTML viewer with all 16 native wing parts | Optional preview; not a game plugin |
 

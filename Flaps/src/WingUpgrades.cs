@@ -19,6 +19,7 @@ public sealed class WingUpgrades : MonoBehaviour
     internal Mesh StockMesh { get { return stockMesh; } }
     internal BuildingPart Part { get { return part; } }
     internal Wing Wing { get { return wing; } }
+    internal void SynchronizePrice(){Initialize();}
     internal static WingUpgrades Ensure(Wing wing)
     {
         if(!FlapsPlugin.Supports(wing))return null;
@@ -34,7 +35,8 @@ public sealed class WingUpgrades : MonoBehaviour
         if(!wing || !part)throw new InvalidOperationException("Wing upgrade has no building part");
         if(!initialized){
             basePrice=part.price;
-            var filter=wing.GetComponent<MeshFilter>();stockMesh=filter?filter.sharedMesh:null;
+            var filter=wing.GetComponent<MeshFilter>();var marker=wing.GetComponent<FlapMarker>();
+            stockMesh=marker && marker.NativeMesh?marker.NativeMesh:filter?WingGeometryCache.NativeMesh(filter.sharedMesh):null;
             initialized=true;
         }
         part.price=WingUpgradeEconomy.TotalPrice(basePrice,Options);
@@ -75,7 +77,7 @@ public sealed class WingUpgrades : MonoBehaviour
             if(!markers[i])markers[i]=group[i].wing.gameObject.AddComponent<FlapMarker>();
             if(!markers[i].InitializeGeometry()){
                 foreach(var marker in markers)if(marker)marker.SynchronizeOwnership();
-                error="This wing mesh cannot be modified";return false;
+                error=markers[i].Preparing?"Wing model is loading; try again shortly":"This wing mesh cannot be modified";return false;
             }
         }
         float moneyBefore=MoneyManager.Instance.money;
@@ -103,7 +105,7 @@ public sealed class WingUpgrades : MonoBehaviour
         var marker=wing.GetComponent<FlapMarker>();
         if(Options!=WingUpgradeOptions.None){
             if(!marker)marker=wing.gameObject.AddComponent<FlapMarker>();
-            if(!marker.InitializeGeometry())FlapsPlugin.LogDetail("Saved wing upgrades retained, but the current mesh could not be modified");
+            if(!marker.InitializeGeometry() && !marker.Preparing)FlapsPlugin.LogDetail("Saved wing upgrades retained, but the current mesh could not be modified");
         }
         if(marker)marker.SynchronizeOwnership();
     }
@@ -119,7 +121,7 @@ internal static class WingUpgradeMirroring
         if(!other && placer.currentSelectedPart==primary.Part)other=placer.currentMirrorPart;
         if(!other || other==primary.Part || !other.gameObject.activeInHierarchy)return result;
         var wing=other.GetComponentInChildren<Wing>(true);
-        if(FlapsPlugin.Supports(wing) && FlapsPlugin.SupportsSpoilers(wing)==FlapsPlugin.SupportsSpoilers(primary.Wing)){
+        if(FlapsPlugin.Supports(wing) && HingedWingProfile.Code(wing.name)==HingedWingProfile.Code(primary.Wing.name)){
             var state=WingUpgrades.Ensure(wing);if(state!=primary)result.Add(state);
         }
         return result;

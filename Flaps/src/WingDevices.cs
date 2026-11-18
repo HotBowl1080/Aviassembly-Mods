@@ -47,6 +47,12 @@ internal sealed class WingDevices
     readonly List<int[]> leadingCaps=new List<int[]>();
     internal readonly int[] skinPartition;
     internal readonly int StockVertexCount;
+    internal WingDevices(BigWingGeometry mesh,WingDevices source)
+    {
+        this.mesh=mesh;shell=source.shell;skin=source.skin;surface=source.surface;
+        devices=source.devices;fixedNoses=source.fixedNoses;fixedSurface=source.fixedSurface;
+        cutPaint=source.cutPaint;leadingCaps=source.leadingCaps;skinPartition=source.skinPartition;StockVertexCount=source.StockVertexCount;
+    }
     internal WingDevices(BigWingGeometry mesh,Vector3[] shell,int[] skin)
     {
         this.mesh=mesh; this.shell=shell; this.skin=skin;

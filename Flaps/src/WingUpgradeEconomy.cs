@@ -40,4 +40,13 @@ internal static class WingUpgradeEconomy
         if(cashChange<0f && cash < -cashChange){error="Not enough money for both wings";return false;}
         return true;
     }
+    internal static bool TryLoadBalance(float cashBefore,float valueBefore,float restoredValue,bool creative,out float cashAfter)
+    {
+        cashAfter=cashBefore;
+        if(!Finite(cashBefore)||!Finite(valueBefore)||!Finite(restoredValue)||valueBefore<0f||restoredValue<0f)return false;
+        if(creative)return true;
+        double balance=(double)cashBefore+valueBefore-restoredValue;
+        if(balance<0d || balance>float.MaxValue)return false;
+        cashAfter=(float)balance;return true;
+    }
 }

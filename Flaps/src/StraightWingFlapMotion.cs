@@ -36,6 +36,13 @@ internal sealed class StraightWingFlapMotion
         positions=(Vector3[])vertices.Clone();normals=(Vector3[])vertexNormals.Clone();
         lastSettingAft=finalAftTravel;lastSettingDown=finalDownTravel;
     }
+    internal StraightWingFlapMotion(StraightWingFlapMotion source)
+    {
+        restPositions=source.restPositions;restNormals=source.restNormals;moving=source.moving;
+        hinge=source.hinge;axis=source.axis;aft=source.aft;
+        lastSettingAft=source.lastSettingAft;lastSettingDown=source.lastSettingDown;
+        positions=(Vector3[])source.positions.Clone();normals=(Vector3[])source.normals.Clone();
+    }
 
     // Retain the existing selector's 0/10/20/30 detents. The additional
     // translation begins after setting 3 and reaches its small offset at 4.

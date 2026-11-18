@@ -42,8 +42,15 @@ namespace HarmonyLib {
 public class Wing : UnityEngine.MonoBehaviour {}
 public class BuildingPart : UnityEngine.MonoBehaviour {public float price;public bool hasBeenPlaced;}
 public class PlaneContainer : UnityEngine.MonoBehaviour {public bool FlightModeInitialized;}
-public class PlaneStorage : UnityEngine.MonoBehaviour {public static PlaneStorage Instance;public int histories;public void UpdateHistory(){histories++;}}
+public class PlaneStorage : UnityEngine.MonoBehaviour {
+ public static PlaneStorage Instance;public int histories;public void UpdateHistory(){histories++;}
+ public PartPlacer partPlacer;public float value;public float GetPlaneCost()=>value;
+ public System.IO.MemoryStream SaveToStream()=>new System.IO.MemoryStream(BitConverter.GetBytes(value));
+ public void LoadFromStream(System.IO.MemoryStream before,int version){value=BitConverter.ToSingle(before.ToArray(),0);}
+}
+public class TestFeedback : UnityEngine.Object { public void ShowNotEnoughMoneyTooltip(){} }
 public class PartPlacer : UnityEngine.MonoBehaviour {
+ public TestFeedback priceFeedbackManager;
  public static bool mirrorMode;
  public BuildingPart currentSelectedPart,currentMirrorPart,partner;
  public BuildingPart GetMirrorPart(BuildingPart part){return mirrorMode?partner:null;}
@@ -54,9 +61,11 @@ public class MoneyManager : UnityEngine.Object {
  public static MoneyManager Instance=new MoneyManager();public float money;
  public void ChangeMoneyAmount(float amount){if(!GameManager.Instance.gameModeData.creativeMode)money+=amount;}
 }
-public class PersistentStorage {}
+public class PersistentStorage { public const int SaveVersion=31; }
 public class GameDataReader {readonly System.IO.Stream stream;public GameDataReader(System.IO.Stream stream){this.stream=stream;}public System.IO.Stream GetStream(){return stream;}}
 public class FlapMarker : UnityEngine.MonoBehaviour {
+ public UnityEngine.Mesh NativeMesh=>null;
+ public bool Preparing=>false;
  public static bool FailGeometry;
  public static string FailOnName;
  public WingUpgradeOptionsForTest observed;
@@ -64,8 +73,12 @@ public class FlapMarker : UnityEngine.MonoBehaviour {
  public void SynchronizeOwnership(){var s=GetComponent<WingUpgrades>();observed=(WingUpgradeOptionsForTest)(byte)s.Options;enabled=s.Options!=WingUpgradeOptions.None;}
 }
 public enum WingUpgradeOptionsForTest {None=0,Flaps=1,Spoilers=2}
+internal static class WingGeometryCache {internal static UnityEngine.Mesh NativeMesh(UnityEngine.Mesh mesh)=>mesh;}
+internal static class HingedWingProfile {
+ internal static byte Code(string name){return name.StartsWith("BigWing")?(byte)1:name.StartsWith("StraightWing")?(byte)2:(byte)3;}
+}
 internal static class FlapsPlugin {
- internal static bool Supports(Wing wing){return wing && (wing.name.StartsWith("BigWing")||wing.name.StartsWith("StraightWing"));}
+ internal static bool Supports(Wing wing){return wing && (wing.name.StartsWith("BigWing")||wing.name.StartsWith("StraightWing") || wing.name.StartsWith("SmallRecreationalWing"));}
  internal static bool SupportsSpoilers(Wing wing){return wing && wing.name.StartsWith("BigWing");}
  internal static void LogDetail(string message){Console.WriteLine(message);}
 }

@@ -24,15 +24,7 @@ internal sealed class BigWingGeometry
     Vector3 travel;
     readonly Vector3[] pin=new Vector3[3], socket=new Vector3[3];
     readonly List<Vector3>[] rings={new List<Vector3>(),new List<Vector3>(),new List<Vector3>()};
-    sealed class BridgeVertex
-    {
-        internal int id;
-        internal Vector3 inner,outer;
-        internal float across;
-    }
-    readonly List<BridgeVertex> flapBridge=new List<BridgeVertex>();
-    readonly List<BridgeVertex> vaneBridge=new List<BridgeVertex>();
-    readonly Vector3[][] vaneCoverEnds=new Vector3[2][];
+
     readonly Vector2 edgeUV;
     static readonly int[,] ends={{122,125,127,129},{124,123,126,128},{136,134,130,131},{137,135,133,132}};
     static readonly Vector3 aft=Vector3.left;
@@ -45,7 +37,7 @@ internal sealed class BigWingGeometry
     internal HashSet<int> MovingVertexIds()
     {
         var ids=new HashSet<int>();foreach(var group in moving)foreach(int id in group)ids.Add(id);
-        foreach(var vertex in flapBridge)ids.Add(vertex.id);foreach(var vertex in vaneBridge)ids.Add(vertex.id);
+        
         return ids;
     }
     int Add(Vertex v,int group)
@@ -94,57 +86,22 @@ internal sealed class BigWingGeometry
             BuildVane(p,f);
         }
         for(int t=0;t<3;t++) FinishTrack(t);
-        BuildFlapBridge(p);
+
         devices=new WingDevices(this,p,skin);
         positions=new Vector3[vertices.Count]; normals=new Vector3[vertices.Count];
         for(int i=0;i<vertices.Count;i++) { positions[i]=vertices[i].p; normals[i]=vertices[i].n; }
     }
-    void BuildFlapBridge(Vector3[] p)
+    // Built topology/track data are immutable. Each wing owns only its pose
+    // buffers and transform state, so undo can reuse the prepared template.
+    internal BigWingGeometry(BigWingGeometry source)
     {
-        Vector3[] inner={p[137],p[135],p[133],p[132]};
-        Vector3[] outer={p[122],p[125],p[127],p[129]};
-        BuildBridge(RoundedFlapEnd(inner,1),RoundedFlapEnd(outer,0),flapBridge);
-        BuildBridge(vaneCoverEnds[1],vaneCoverEnds[0],vaneBridge);
+        vertices=source.vertices;triangles=source.triangles;moving=source.moving;
+        origin=source.origin;axis=source.axis;pin=source.pin;socket=source.socket;rings=source.rings;
+        edgeUV=source.edgeUV;
+        positions=(Vector3[])source.positions.Clone();normals=(Vector3[])source.normals.Clone();
+        devices=new WingDevices(this,source.devices);
     }
-    Vector3[] RoundedFlapEnd(Vector3[] end,int flap)
-    {
-        var profile=new List<Vector3>(end);
-        Vector3 forward=Vector3.ProjectOnPlane(-aft,axis[flap]).normalized;
-        for(int k=5;k>=1;k--)
-        {
-            float theta=(float)Math.PI*k/6f;
-            profile.Add(Vector3.Lerp(end[0],end[3],.5f-.5f*(float)Math.Cos(theta))+forward*(.050f*(float)Math.Sin(theta)));
-        }
-        return profile.ToArray();
-    }
-    void BuildBridge(Vector3[] inner,Vector3[] outer,List<BridgeVertex> bridge)
-    {
-        for(int span=0;span<8;span++)for(int side=0;side<inner.Length;side++)
-        {
-            int next=(side+1)%inner.Length;
-            float a=span/8f,b=(span+1)/8f;
-            BridgeFace(inner,outer,side,a,next,b,side,b,bridge);
-            BridgeFace(inner,outer,side,a,next,a,next,b,bridge);
-        }
-    }
-    void BridgeFace(Vector3[] inner,Vector3[] outer,int sideA,float spanA,int sideB,float spanB,int sideC,float spanC,List<BridgeVertex> bridge)
-    {
-        Vector3 a=BridgeRest(inner[sideA],outer[sideA],spanA);
-        Vector3 b=BridgeRest(inner[sideB],outer[sideB],spanB);
-        Vector3 c=BridgeRest(inner[sideC],outer[sideC],spanC);
-        Vector3 normal=Vector3.Cross(b-a,c-a).normalized;
-        foreach(var pair in new[]{new Vector2(sideA,spanA),new Vector2(sideB,spanB),new Vector2(sideC,spanC)})
-        {
-            int side=(int)pair.x;
-            int id=Add(new Vertex(BridgeRest(inner[side],outer[side],pair.y),normal,edgeUV),-1);
-            triangles[1].Add(id);
-            bridge.Add(new BridgeVertex{id=id,inner=inner[side],outer=outer[side],across=pair.y});
-        }
-    }
-    static Vector3 BridgeRest(Vector3 inner,Vector3 outer,float across)
-    {
-        return Vector3.Lerp(inner,outer,across);
-    }
+
     void Clip(Vertex[] face,float cut,bool rear,int track,int group)
     {
         List<Vertex> polygon=new List<Vertex>(4);
@@ -233,8 +190,8 @@ internal sealed class BigWingGeometry
             for(int k=0;k<chord.Length;k++)
                 Face(center,profile[side,k],profile[side,(k+1)%chord.Length],side==0 ? Vector3.back : Vector3.forward,group);
         }
-        vaneCoverEnds[flap]=new Vector3[chord.Length];
-        for(int k=0;k<chord.Length;k++)vaneCoverEnds[flap][k]=profile[flap==0?0:1,k];
+        
+        
         Vector3 sectionCenter=HingeAt(flap,first)+aft*(-VaneForward+VaneChord*.43f)+Vector3.down*.045f;
         for(int k=0;k<chord.Length;k++) {
             int next=(k+1)%chord.Length;
@@ -303,21 +260,7 @@ internal sealed class BigWingGeometry
         Vector3 pinRest=HingeAt(flap,point.z)+vanePinOffset;
         return TransformPoint(flap,pinRest)+vanePitch*(point-pinRest);
     }
-    void PoseBridge(List<BridgeVertex> bridge,bool vane)
-    {
-        foreach(BridgeVertex vertex in bridge)
-        {
-            Vector3 inner=vane?TransformVanePoint(1,vertex.inner):TransformPoint(1,vertex.inner);
-            Vector3 outer=vane?TransformVanePoint(0,vertex.outer):TransformPoint(0,vertex.outer);
-            positions[vertex.id]=BridgeRest(inner,outer,vertex.across);
-        }
-        for(int i=0;i<bridge.Count;i+=3)
-        {
-            int a=bridge[i].id,b=bridge[i+1].id,c=bridge[i+2].id;
-            Vector3 normal=Vector3.Cross(positions[b]-positions[a],positions[c]-positions[a]).normalized;
-            normals[a]=normals[b]=normals[c]=normal;
-        }
-    }
+
     internal void Pose(float degrees,Vector3 down)
     {
         Pose(degrees,down,0f);
@@ -372,8 +315,8 @@ internal sealed class BigWingGeometry
             Quaternion q=new Quaternion(cross.x*inv,cross.y*inv,cross.z*inv,w*inv);
             foreach(int i in moving[t+2]) { positions[i]=pin[t]+q*(vertices[i].p-pin[t]); normals[i]=q*vertices[i].n; }
         }
-        PoseBridge(flapBridge,false);
-        PoseBridge(vaneBridge,true);
+        
+        
         devices.Pose(degrees,spoilers,down);
     }
 }

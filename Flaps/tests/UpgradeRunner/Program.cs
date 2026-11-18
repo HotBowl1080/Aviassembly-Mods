@@ -26,7 +26,25 @@ class Program {
  }
  static void Patch(Type type,string method,params object[] args){type.GetMethod(method,BindingFlags.NonPublic|BindingFlags.Static).Invoke(null,args);}
  static void Main(){try{Transactions();Mirroring();Snapshots();CodecSafety();Console.WriteLine("PASS "+assertions+" upgrade assertions: per-wing 25% prices, independent options, atomic mirrored purchases/refunds, campaign debits/refunds, exact affordability, creative mode, placement/copy/resale, undo, old/new save round-trips, cursor/prefix preservation, malformed metadata rejection.");}catch(Exception e){Console.Error.WriteLine(e);Environment.ExitCode=1;}}
+ static void DesignLoads(){
+  var ctx=new Context("SmallRecreationalWing");Check(ctx.Set(F,true),"Install recreational flaps");Check(!ctx.Set(S,true),"Reject recreational spoilers");
+  var records=WingUpgradePersistence.Capture(ctx.storage);Check(records.Single().wingType==3,"Distinct saved wing identity");
+  var copy=new Context("SmallRecreationalWing");WingUpgradePersistence.Restore(copy.storage,records);Near(copy.part.price,500,"Restored flap price");
+  var plane=copy.storage;plane.value=400;MoneyManager.Instance.money=125;
+  foreach(var target in new[]{500f,500f,600f,400f}){
+   float priorValue=plane.value,priorCash=MoneyManager.Instance.money;
+   var capture=new object[]{plane,null};Patch(typeof(ReconcilePurchasedDesign),"Prefix",capture);
+   plane.value=target;MoneyManager.Instance.money=priorCash+priorValue-400;
+   var finish=new object[]{plane,true,capture[1]};Patch(typeof(ReconcilePurchasedDesign),"Postfix",finish);
+   bool affordable=priorCash+priorValue>=target;
+   Check((bool)finish[1]==affordable,"Design affordability");
+   Near(plane.value,affordable?target:priorValue,"Design restored or rolled back");
+   Near(MoneyManager.Instance.money,affordable?priorCash+priorValue-target:priorCash,"Design money conserved");
+   Patch(typeof(ReconcilePurchasedDesign),"Finalizer",null,plane,capture[1]);
+  }
+ }
  static void Transactions(){
+  DesignLoads();
   var c=new Context();Check(c.Set(F,true),"Buy flaps");Near(MoneyManager.Instance.money,900,"Flaps debit");Near(c.part.price,500,"Wing value includes flaps");
   Check(c.Set(F,true),"Repeated enable succeeds");Near(MoneyManager.Instance.money,900,"Repeated enable is not charged");Check(c.storage.histories==1,"Repeated enable has no history step");
   Check(c.Set(S,true),"Buy spoilers independently");Near(MoneyManager.Instance.money,800,"Spoilers debit");Near(c.part.price,600,"Both cost 50% of BASE wing");

@@ -16,9 +16,9 @@ internal static class WingUpgradeSaveCodec
     }
     static void Validate(Record record,HashSet<string> seen)
     {
-        if(record.partIndex<0 || record.wingIndex<0 || record.wingType<1 || record.wingType>2 ||
+        if(record.partIndex<0 || record.wingIndex<0 || record.wingType<1 || record.wingType>8 ||
            record.options==WingUpgradeOptions.None || (record.options&~(WingUpgradeOptions.Flaps|WingUpgradeOptions.Spoilers))!=0 ||
-           (record.wingType==2 && (record.options&WingUpgradeOptions.Spoilers)!=0) ||
+           (record.wingType!=1 && (record.options&WingUpgradeOptions.Spoilers)!=0) ||
            !WingUpgradeEconomy.Finite(record.basePrice) || record.basePrice<0f ||
            !WingUpgradeEconomy.Finite(WingUpgradeEconomy.TotalPrice(record.basePrice,record.options)) ||
            !seen.Add(record.partIndex+":"+record.wingIndex))

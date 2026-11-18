@@ -6,7 +6,7 @@ using HarmonyLib;
 
 internal static class WingUpgradePersistence
 {
-    internal static byte WingType(Wing wing) { return wing.name.StartsWith("BigWing")?(byte)1:(byte)2; }
+    internal static byte WingType(Wing wing) { return HingedWingProfile.Code(wing.name); }
     internal static List<WingUpgradeSaveCodec.Record> Capture(PlaneStorage storage)
     {
         var records=new List<WingUpgradeSaveCodec.Record>();

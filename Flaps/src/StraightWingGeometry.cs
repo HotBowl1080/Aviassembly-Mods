@@ -24,20 +24,36 @@ internal sealed class StraightWingGeometry
     internal static readonly Vector3 HingeTip=new Vector3(-.50146f,.193f,.18f);
     internal static readonly Vector3 ReverseHingeRoot=new Vector3(-.85977f,.060f,2.85f);
     internal static readonly Vector3 ReverseHingeTip=new Vector3(-.50146f,.294f,.18f);
+    internal readonly HingedWingProfile profile;
+    internal readonly float slope,offset,tipZ,rootZ;
+    internal Vector3 Root(bool inverted){return profile!=null?HingedWingProfile.Hinge(profile.root,inverted):(inverted?ReverseHingeRoot:HingeRoot);}
+    internal Vector3 Tip(bool inverted){return profile!=null?HingedWingProfile.Hinge(profile.tip,inverted):(inverted?ReverseHingeTip:HingeTip);}
+    internal StraightWingGeometry(StraightWingGeometry source)
+    {
+        profile=source.profile;slope=source.slope;offset=source.offset;tipZ=source.tipZ;rootZ=source.rootZ;
+        vertices=source.vertices;triangles=source.triangles;moving=source.moving;FlapAreaFraction=source.FlapAreaFraction;
+        motion=new StraightWingFlapMotion(source.motion);reverseMotion=new StraightWingFlapMotion(source.reverseMotion);
+        positions=motion.positions;normals=motion.normals;
+    }
 
     internal StraightWingGeometry(Vector3[] p,Vector3[] n,Vector2[] uv,int[] skin,int[] edge)
     {
-        if(p.Length!=332 || n.Length!=332 || uv.Length!=332 || skin.Length!=702 || edge.Length!=582 ||
-            (p[0]-new Vector3(.7865f,-.08661755f,2.9511f)).sqrMagnitude>.000001f)
+        profile=HingedWingProfile.Match(p,skin.Length,edge.Length);
+        if(n.Length!=p.Length || uv.Length!=p.Length)throw new ArgumentException("Missing wing vertex attributes");
+        if(profile==null && (p.Length!=332 || skin.Length!=702 || edge.Length!=582 ||
+            (p[0]-new Vector3(.7865f,-.08661755f,2.9511f)).sqrMagnitude>.000001f))
             throw new ArgumentException("Unrecognized Straight Wing mesh; leaving the stock wing intact");
         var current=new List<Face>();
         for(int m=0;m<2;m++){int[] ids=m==0?skin:edge;for(int i=0;i<ids.Length;i+=3)current.Add(new Face(new Vertex(p[ids[i]],n[ids[i]],uv[ids[i]]),new Vertex(p[ids[i+1]],n[ids[i+1]],uv[ids[i+1]]),new Vertex(p[ids[i+2]],n[ids[i+2]],uv[ids[i+2]]),m));}
         var stationary=new List<Face>();
         // The hinge follows the stock taper. The tip stops just inboard of the
         // native aileron recess; the root retains a small stationary end strip.
-        Vector3[] planes={Vector3.back,Vector3.forward,new Vector3(1f,0f,.1341985f)};
-        float[] offsets={.18f,-2.85f,.4773043f};
-        for(int i=0;i<planes.Length;i++){
+        tipZ=Tip(false).z;rootZ=Root(false).z;
+        slope=profile!=null?(Tip(false).x-Root(false).x)/(rootZ-tipZ):.1341985f;
+        offset=profile!=null?-Tip(false).x-slope*tipZ:.4773043f;
+        Vector3[] planes={Vector3.back,Vector3.forward,new Vector3(1f,0f,slope)};
+        float[] offsets={tipZ,-rootZ,offset};
+        foreach(int i in profile?.code==5?new[]{0,1,2}:profile!=null?new[]{2,0,1}:new[]{0,1,2}){
             List<Face> inside,outside;Split(current,planes[i],offsets[i],out inside,out outside);
             foreach(Face f in outside)if(!f.cap)stationary.Add(f);current=inside;
         }
@@ -47,9 +63,9 @@ internal sealed class StraightWingGeometry
         // introduce slivers; this preserves topology and the native UVs.
         float depth=0f;
         foreach(Face face in current)foreach(Vertex v in new[]{face.a,face.b,face.c})
-            depth=Mathf.Max(depth,-(v.p.x+.1341985f*v.p.z+.4773043f));
+            depth=Mathf.Max(depth,-(v.p.x+slope*v.p.z+offset));
         float normalGap=HingeGap*planes[2].magnitude;
-        float chordScale=1f-normalGap/depth,spanScale=1f-2f*EndGap/(2.85f-.18f);
+        float chordScale=1f-normalGap/depth,spanScale=1f-2f*EndGap/(rootZ-tipZ);
         if(chordScale<=0f)throw new ArgumentException("Straight Wing flap is too shallow for its seam");
         float stockArea=0f,flapArea=0f;
         for(int i=0;i<skin.Length;i+=3)stockArea+=Math.Abs(Vector3.Cross(p[skin[i+1]]-p[skin[i]],p[skin[i+2]]-p[skin[i]]).y);
@@ -60,19 +76,19 @@ internal sealed class StraightWingGeometry
         }
         FlapAreaFraction=Mathf.Clamp01(flapArea/stockArea);
         var rp=new Vector3[vertices.Count];var rn=new Vector3[vertices.Count];for(int i=0;i<rp.Length;i++){rp[i]=vertices[i].p;rn[i]=vertices[i].n;}
-        motion=new StraightWingFlapMotion(rp,rn,moving.ToArray(),HingeRoot,HingeTip,Vector3.left);
-        reverseMotion=new StraightWingFlapMotion(rp,rn,moving.ToArray(),ReverseHingeRoot,ReverseHingeTip,Vector3.left);
+        motion=new StraightWingFlapMotion(rp,rn,moving.ToArray(),Root(false),Tip(false),Vector3.left);
+        reverseMotion=new StraightWingFlapMotion(rp,rn,moving.ToArray(),Root(true),Tip(true),Vector3.left);
         positions=motion.positions;normals=motion.normals;
     }
     internal void Pose(float angle,Vector3 down){
         if(Vector3.Dot(down,Vector3.up)>0f){reverseMotion.Pose(angle,down);Array.Copy(reverseMotion.positions,positions,positions.Length);Array.Copy(reverseMotion.normals,normals,normals.Length);}
         else motion.Pose(angle,down);
     }
-    static Vertex Inset(Vertex v,float chordScale,float spanScale,float gap){
-        float distance=v.p.x+.1341985f*v.p.z+.4773043f;
-        v.p.z=1.515f+(v.p.z-1.515f)*spanScale;
-        v.p.x=distance*chordScale-gap-.1341985f*v.p.z-.4773043f;
-        float shear=.1341985f*(chordScale-spanScale);
+    Vertex Inset(Vertex v,float chordScale,float spanScale,float gap){
+        float distance=v.p.x+slope*v.p.z+offset;
+        v.p.z=(rootZ+tipZ)*.5f+(v.p.z-(rootZ+tipZ)*.5f)*spanScale;
+        v.p.x=distance*chordScale-gap-slope*v.p.z-offset;
+        float shear=slope*(chordScale-spanScale);
         v.n=new Vector3(v.n.x/chordScale,v.n.y,v.n.z/spanScale-shear*v.n.x/(chordScale*spanScale)).normalized;
         return v;
     }

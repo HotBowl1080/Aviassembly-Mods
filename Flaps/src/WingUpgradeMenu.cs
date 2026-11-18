@@ -50,7 +50,8 @@ internal static class WingUpgradeMenu
             if(!state)return;string error;
             var group=WingUpgradeMirroring.Group(state,placer);
             bool changed=WingUpgrades.TrySetGroup(group,option,selected,out error);refresh();
-            status.text=changed?(group.Count>1?"25% per wing; mirrored settings":"25% of base wing price per upgrade"):error;
+            status.text=changed?"":error;status.gameObject.SetActive(!changed);
+            body.sizeDelta=new Vector2(280f,(FlapsPlugin.SupportsSpoilers(state.Wing)?2:1)*34f+(changed?0f:26f));
             status.color=changed?source.color:new Color(.7f,.14f,.14f);
         });
     }
@@ -69,8 +70,8 @@ internal static class WingUpgradeMenu
         foreach(var layout in panel.GetComponents<LayoutGroup>())layout.enabled=false;
         var fitter=panel.GetComponent<ContentSizeFitter>();if(fitter)fitter.enabled=false;
         for(int i=0;i<body.childCount;i++)body.GetChild(i).gameObject.SetActive(false);
-        int rows=FlapsPlugin.SupportsSpoilers(wing)?2:1;body.sizeDelta=new Vector2(280f,rows*34f+26f);
-        var status=Label(source,body,rows,24f);status.text="25% of base wing price per upgrade";status.fontSizeMax=13f;
+        int rows=FlapsPlugin.SupportsSpoilers(wing)?2:1;body.sizeDelta=new Vector2(280f,rows*34f);
+        var status=Label(source,body,rows,24f);status.text="";status.fontSizeMax=13f;status.gameObject.SetActive(false);
         var live=panel.AddComponent<WingUpgradeMenuRefresh>();
         Row(body,source,colors,state,WingUpgradeOptions.Flaps,"Flaps",0,status,__instance.partPlacer,live);
         if(rows==2)Row(body,source,colors,state,WingUpgradeOptions.Spoilers,"Spoilers",1,status,__instance.partPlacer,live);
@@ -81,5 +82,6 @@ internal static class WingUpgradeMenu
 public sealed class WingUpgradeMenuRefresh : MonoBehaviour
 {
     internal Action refresh;
-    void LateUpdate(){if(refresh!=null)refresh();}
+    float nextRefresh;
+    void LateUpdate(){if(Time.unscaledTime<nextRefresh)return;nextRefresh=Time.unscaledTime+.15f;if(refresh!=null)refresh();}
 }

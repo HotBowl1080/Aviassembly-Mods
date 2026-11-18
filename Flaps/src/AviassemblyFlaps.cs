@@ -7,7 +7,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-[BepInPlugin("com.andrewstack.aviassembly.flaps", "Flap Mod", "0.23.0")]
+[BepInPlugin("com.andrewstack.aviassembly.flaps", "Flap Mod", "0.24.0")]
 public class FlapsPlugin : BaseUnityPlugin
 {
     internal static int stage { get; private set; }
@@ -17,7 +17,7 @@ public class FlapsPlugin : BaseUnityPlugin
     internal static FlapsPlugin instance;
     internal static PlaneContainer activePlane;
     internal static bool spoilersRequested;
-    internal static bool Supports(Wing wing) { return wing && (wing.name.StartsWith("BigWing") || wing.name.StartsWith("StraightWing")); }
+    internal static bool Supports(Wing wing) { return wing && HingedWingProfile.Code(wing.name)!=0; }
     internal static bool SupportsSpoilers(Wing wing) { return wing && wing.name.StartsWith("BigWing"); }
     internal static void LogDetail(string message) { if (instance) instance.Logger.LogInfo(message); }
     void Awake() { instance = this; new Harmony("com.andrewstack.aviassembly.flaps").PatchAll(); }
@@ -82,91 +82,90 @@ public class FlapMarker : MonoBehaviour
     internal float FlapAreaFraction { get { return straight==null?0f:straight.FlapAreaFraction; } }
     internal bool CanOperate(PlaneContainer plane) { return IsReady && owner==plane && isActiveAndEnabled && wing && wing.isActiveAndEnabled && wing.rb; }
 
+    WingGeometryCache.Entry prepared;
+    internal bool Preparing { get; private set; }
+    internal Mesh NativeMesh { get { return original; } }
+    bool uploaded;
+    float uploadedAngle,uploadedSpoilers;
+    Vector3 uploadedDown;
+
+    bool BindNative()
+    {
+        wing=GetComponent<Wing>();upgrades=GetComponent<WingUpgrades>();filter=GetComponent<MeshFilter>();
+        if(!wing || !filter || !filter.sharedMesh)return false;
+        if(!original)original=WingGeometryCache.NativeMesh(upgrades && upgrades.StockMesh?upgrades.StockMesh:filter.sharedMesh);
+        if(!original || !original.isReadable || original.subMeshCount<1 || original.subMeshCount>2)return false;
+        if(prepared==null)prepared=WingGeometryCache.Request(original,FlapsPlugin.SupportsSpoilers(wing));
+        return prepared!=null;
+    }
     void Start()
     {
-        upgrades=GetComponent<WingUpgrades>();
-        if(!upgrades || upgrades.Options==WingUpgradeOptions.None){enabled=false;return;}
+        wing=GetComponent<Wing>();upgrades=GetComponent<WingUpgrades>();
+        if(!upgrades || upgrades.Options==WingUpgradeOptions.None){ShowDefaultModel();return;}
         InitializeGeometry();SynchronizeOwnership();
+    }
+    internal void ShowDefaultModel()
+    {
+        wing=GetComponent<Wing>();upgrades=GetComponent<WingUpgrades>();
+        if(!FlapsPlugin.SupportsSpoilers(wing)){enabled=false;return;}
+        // Default appearance changes no ownership, price, lift or drag.
+        enabled=true;
+        if(upgrades && upgrades.Options!=WingUpgradeOptions.None)return;
+        if(!BindNative())return;
+        var mesh=WingGeometryCache.Stowed(prepared);Preparing=mesh==null && !prepared.build.IsCompleted;
+        if(mesh){if(filter.sharedMesh!=mesh)filter.sharedMesh=mesh;enabled=false;}
     }
     internal bool InitializeGeometry()
     {
         if(geometry!=null || straight!=null)return true;
-        try {
-            wing=GetComponent<Wing>();
-            upgrades=GetComponent<WingUpgrades>();
-            filter=GetComponent<MeshFilter>();
-            if (!filter || !filter.sharedMesh) return false;
-            original=upgrades && upgrades.StockMesh?upgrades.StockMesh:filter.sharedMesh;
-            if(!original.isReadable || original.subMeshCount!=2) return false;
-            if(wing.name.StartsWith("StraightWing")) {
-                var cut=new StraightWingGeometry(original.vertices,original.normals,original.uv,original.GetTriangles(0),original.GetTriangles(1));
-                cut.Pose(0f,Vector3.down);
-                var uv=new Vector2[cut.vertices.Count];for(int i=0;i<uv.Length;i++)uv[i]=cut.vertices[i].uv;
-                deployed=new Mesh();deployed.name="Straight Wing hinged flap";deployed.MarkDynamic();
-                deployed.vertices=cut.positions;deployed.normals=cut.normals;deployed.uv=uv;deployed.subMeshCount=2;
-                for(int i=0;i<2;i++)deployed.SetTriangles(cut.triangles[i].ToArray(),i,false);
-                Bounds box=original.bounds;box.Expand(.9f);deployed.bounds=box;
-                straight=cut;filter.sharedMesh=deployed;owner=GetComponentInParent<PlaneContainer>();
-                FlapsPlugin.activePlane=owner;if(!FlapsPlugin.fittedWings.Contains(this))FlapsPlugin.fittedWings.Add(this);return true;
-            }
-            if(!wing.name.StartsWith("BigWing"))return false;
-            var shape=new BigWingGeometry(original.vertices, original.normals, original.uv,
-                original.GetTriangles(0),original.GetTriangles(1));
-            shape.Pose(0f,Vector3.down,0f);
-            var tex=new Vector2[shape.vertices.Count];
-            for(int i=0;i<tex.Length;i++) tex[i]=shape.vertices[i].uv;
-            deployed=new Mesh();
-            deployed.name="Big Wing deployed";
-            deployed.MarkDynamic();
-            deployed.vertices=shape.positions;
-            deployed.normals=shape.normals;
-            deployed.uv=tex;
-            deployed.subMeshCount=2;
-            for(int i=0;i<2;i++) deployed.SetTriangles(shape.triangles[i].ToArray(),i,false);
-            Bounds bounds=original.bounds;
-            bounds.Expand(.9f);
-            deployed.bounds=bounds;
-            geometry=shape;
-            filter.sharedMesh=deployed;
-            owner=GetComponentInParent<PlaneContainer>();
-            FlapsPlugin.activePlane=owner;
-            if(!FlapsPlugin.fittedWings.Contains(this))FlapsPlugin.fittedWings.Add(this);
+        try{
+            if(!BindNative())return false;
+            var ready=WingGeometryCache.Ready(prepared);
+            Preparing=ready==null && !prepared.build.IsCompleted;if(ready==null)return false;
+            if(ready.big!=null){geometry=new BigWingGeometry(ready.big);}
+            else straight=new StraightWingGeometry(ready.straight);
+            var positions=geometry!=null?geometry.positions:straight.positions;
+            var normals=geometry!=null?geometry.normals:straight.normals;
+            deployed=WingGeometryCache.MakeMesh(ready,positions,normals,original.bounds,true);
+            filter.sharedMesh=deployed;owner=GetComponentInParent<PlaneContainer>();FlapsPlugin.activePlane=owner;
+            uploaded=true;uploadedAngle=uploadedSpoilers=0f;uploadedDown=Vector3.down;
             return true;
-        } catch(Exception ex) { FlapsPlugin.LogDetail("Flap geometry setup failed: "+ex); }
-        return false;
+        }catch(Exception ex){FlapsPlugin.LogDetail("Flap geometry setup failed: "+ex);return false;}
     }
     internal void SynchronizeOwnership()
     {
-        upgrades=GetComponent<WingUpgrades>();
-        if(!HasFlaps)angle=0f;
-        if(!HasSpoilers)spoilerFraction=0f;
+        wing=GetComponent<Wing>();upgrades=GetComponent<WingUpgrades>();
+        if(!HasFlaps)angle=0f;if(!HasSpoilers)spoilerFraction=0f;
         bool installed=upgrades && upgrades.Options!=WingUpgradeOptions.None;
-        enabled=installed;
         if(!installed){
             FlapsPlugin.fittedWings.Remove(this);
-            if(filter && original)filter.sharedMesh=original;
+            if(FlapsPlugin.SupportsSpoilers(wing))ShowDefaultModel();
+            else{enabled=false;if(filter && original)filter.sharedMesh=original;}
             return;
         }
+        enabled=true;if(geometry==null && straight==null && !InitializeGeometry())return;
         if(!FlapsPlugin.fittedWings.Contains(this))FlapsPlugin.fittedWings.Add(this);
-        if(!IsReady)return;
         Vector3 down=owner && owner.FlightModeInitialized && wing.rb?transform.InverseTransformVector(-wing.rb.transform.up).normalized:Vector3.down;
+        UploadPose(down);
+    }
+    void UploadPose(Vector3 down)
+    {
+        if(uploaded && uploadedAngle==angle && uploadedSpoilers==spoilerFraction && (uploadedDown-down).sqrMagnitude<1e-10f){filter.sharedMesh=deployed;return;}
         if(IsStraight){straight.Pose(angle,down);deployed.vertices=straight.positions;deployed.normals=straight.normals;}
         else{geometry.Pose(angle,down,spoilerFraction);deployed.vertices=geometry.positions;deployed.normals=geometry.normals;}
-        filter.sharedMesh=deployed;
+        filter.sharedMesh=deployed;uploaded=true;uploadedAngle=angle;uploadedSpoilers=spoilerFraction;uploadedDown=down;
     }
     void LateUpdate()
     {
-        if(!IsReady || !wing) return;
+        if(!upgrades || upgrades.Options==WingUpgradeOptions.None){ShowDefaultModel();return;}
+        if(geometry==null && straight==null){if(InitializeGeometry())SynchronizeOwnership();return;}
+        if(!IsReady || !wing)return;
         bool flying=wing.rb && owner && owner.FlightModeInitialized;
-        float next=flying && HasFlaps ? Mathf.MoveTowards(angle,BigWingPreset.Angle(FlapsPlugin.stage),45f*Time.deltaTime) : 0f;
-        float nextSpoiler=flying && HasSpoilers ? Mathf.MoveTowards(spoilerFraction,FlapsPlugin.spoilersRequested?1f:0f,3f*Time.deltaTime) : 0f;
-        if(next==angle && nextSpoiler==spoilerFraction) return;
-        angle=next;
-        spoilerFraction=nextSpoiler;
-        Vector3 localDown=flying?transform.InverseTransformVector(-wing.rb.transform.up).normalized:Vector3.down;
-        if(IsStraight){straight.Pose(angle,localDown);deployed.vertices=straight.positions;deployed.normals=straight.normals;}
-        else{geometry.Pose(angle,localDown,spoilerFraction);deployed.vertices=geometry.positions;deployed.normals=geometry.normals;}
-        if(filter.sharedMesh!=deployed) filter.sharedMesh=deployed;
+        float next=flying && HasFlaps?Mathf.MoveTowards(angle,BigWingPreset.Angle(FlapsPlugin.stage),45f*Time.deltaTime):0f;
+        float nextSpoiler=flying && HasSpoilers?Mathf.MoveTowards(spoilerFraction,FlapsPlugin.spoilersRequested?1f:0f,3f*Time.deltaTime):0f;
+        if(next==angle && nextSpoiler==spoilerFraction)return;
+        angle=next;spoilerFraction=nextSpoiler;
+        Vector3 down=flying?transform.InverseTransformVector(-wing.rb.transform.up).normalized:Vector3.down;UploadPose(down);
     }
     void OnDestroy()
     {
@@ -238,7 +237,7 @@ public static class FlapPhysics
         FlapMarker marker = __instance.GetComponent<FlapMarker>();
         if (!marker || !marker.IsReady || !__instance.rb || !__instance.orientation) return;
         if(marker.IsStraight){
-            if(!__0 || !__0.FlightModeInitialized || !marker.CanOperate(__0))return;
+            if(marker.CurrentAngle<=0f || !__0 || !__0.FlightModeInitialized || !marker.CanOperate(__0))return;
             float weight=__instance.GetWingArea()*Mathf.Max(0f,__instance.liftForce),total=0f;
             foreach(PlanePart part in __0.planeParts){
                 Wing other=part as Wing;

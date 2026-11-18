@@ -1,12 +1,12 @@
 # Flap Mod
 
-One plugin contains Big Wing flaps and the Straight Wing hinged flap candidate. Big Wing v0.20 geometry is preserved in the combined v0.23 build.
+Eight wings support paid flaps. Big Wing always shows the updated model; its fixed center plate no longer overlaps an extra moving panel. Wing geometry is prepared once and reused on upgrade and undo.
 
-**v0.23 in-game verification is pending.** The combined DLL compiles, and transaction/save, geometry and force checks pass. Manual campaign and menu testing is still required.
+**v0.24 in-game verification is pending.** The combined DLL compiles, and transaction/save, geometry and force checks pass. Manual campaign and menu testing is still required.
 
-## Paid per-wing upgrades in v0.23
+## Paid per-wing upgrades in v0.24
 
-- Buy or remove **Flaps** from the existing wing settings menu: Big Wing and Straight Wing are supported.
+- Buy or remove **Flaps** from the existing wing settings menu: see the wing list below.
 - **Spoilers** are a separate purchase on Big Wing. They can be used without buying flaps.
 - Each option costs **25% of the unmodified wing price**. Deselecting an owned option refunds its price.
 - With the editor's mirror mode on, settings apply to both wings. The pair price is shown and checked before either wing changes; the pair is one undo step.
@@ -44,9 +44,10 @@ The current DLL checksum is recorded in [SHA256.txt](SHA256.txt).
 
 | Wing | Flaps | Preview |
 | --- | --- | --- |
-| Big Wing | Separate paid flaps/spoilers; v0.20 geometry retained | Modified model and animation |
+| Big Wing | Separate paid flaps/spoilers; updated stowed model without purchase | Modified model and animation |
 | Straight Wing | Paid flaps; v0.22 geometry/forces retained | Actual cut mesh and C# poses, 0–30 degrees |
-| Other 14 native wing parts | Stock controls retained | Native meshes with child transforms baked in |
+| Small Recreational Wing, Glider Wing, Electron Wing, Small Jet Wing, Delta Wing 02, Wing | Paid inboard flaps; native ailerons retained | Actual cut mesh and C# poses, 0–30 degrees |
+| Other 8 native wing parts | Stock controls retained | Native meshes with child transforms baked in |
 
 ## Controls
 
@@ -82,4 +83,4 @@ Choose a wing from the dropdown, drag to rotate, scroll to zoom, and choose Whol
 | [Big Wing v0.20 notes](docs/BIG-WING-v0.20.md) | Preserved geometry and validation history |
 | [archive](archive/) | Older viewer ZIPs |
 
-Build from this folder with `./build.ps1 -GameDir '<Aviassembly installation>'`. Publish matching source, compiled DLL and modified previews together. Finish Straight Wing in-game verification before implementing another wing.
+Build from this folder with `./build.ps1 -GameDir '<Aviassembly installation>'`. Publish matching source, compiled DLL and modified previews together.

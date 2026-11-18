@@ -1,13 +1,13 @@
 # Paid wing upgrades
 
-Flap Mod v0.23 adds separate paid Flaps and Spoilers options to the existing wing settings menu.
+Flap Mod v0.24 provides separate paid Flaps and Spoilers options to the existing wing settings menu.
 
 ## Prices and eligibility
 
 | Wing | Flaps | Spoilers |
 | --- | --- | --- |
 | Big Wing | 25% of the wing's base price | 25% of the wing's base price |
-| Straight Wing | 25% of the wing's base price | Not offered |
+| Straight Wing, Small Recreational Wing, Glider Wing, Electron Wing, Small Jet Wing, Delta Wing 02, Wing | 25% of the wing's base price | Not offered |
 | Other wings | Not offered yet | Not offered yet |
 
 Each option uses the unmodified wing price. Buying a second option does not increase its price by charging a percentage of an already upgraded wing.
@@ -32,7 +32,7 @@ When the editor's mirror mode is on, changing a setting also applies it to the c
 
 ## Saved options
 
-Flaps and spoilers are saved per wing in campaign saves, aircraft designs and undo snapshots. Loading restores the selected options and upgraded part values without charging again. Old saves without upgrade records load with stock options off.
+Flaps and spoilers are saved per wing in campaign saves, aircraft designs and undo snapshots. Loading restores the selected options and upgraded part values without charging twice. When replacing an aircraft design, the campaign balance changes by the difference between the two aircraft values, including upgrades. Old saves without upgrade records load with stock options off.
 
 The extension is appended after the native save data. Native part and money records retain their original layout, and reading the upgrade extension restores the native reader's position before the game continues loading.
 
@@ -42,4 +42,4 @@ No flap speed limits, overspeed warnings, damage or automatic retraction are add
 
 The upgrade runner exercises the production transaction and persistence classes using small in-memory game adapters. Its checks cover exact affordability, separate options, mixed ownership, atomic mirrored purchases/refunds, creative mode, unpaid previews, copy prices, native-style resale and undo, legacy saves, campaign/design snapshot round-trips, unchanged native prefixes, reader cursor restoration and malformed records.
 
-The combined DLL also compiles against the installed game, and its eight Harmony targets and injected fields match the installed assemblies. Geometry and force regression checks still pass. This is not an in-game campaign/UI test: verify the menu, native mirror matching, purchases, refunds, undo and reload on a test aircraft before treating the candidate as fully validated in-game.
+The combined DLL also compiles against the installed game, and its 13 Harmony targets and injected fields match the installed assemblies. Geometry and force regression checks still pass. This is not an in-game campaign/UI test: verify the menu, native mirror matching, purchases, refunds, undo and reload on a test aircraft before treating the candidate as fully validated in-game.

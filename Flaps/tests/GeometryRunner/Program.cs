@@ -22,6 +22,18 @@ class Program
   var doc=JsonDocument.Parse(File.ReadAllText(args[0])).RootElement;var p=Vec(doc.GetProperty("positions"));var n=Vec(doc.GetProperty("normals"));
   var uv=doc.GetProperty("uv").EnumerateArray().Select(v=>new Vector2(v[0].GetSingle(),v[1].GetSingle())).ToArray();
   var tri=doc.GetProperty("triangles").EnumerateArray().Select(a=>a.EnumerateArray().Select(v=>v.GetInt32()).ToArray()).ToArray();
+  if(args.Length==3){
+   var profile=HingedWingProfile.Match(p,tri[0].Length,tri[1].Length);var root=profile.root;var tip=profile.tip;
+   var log=Console.Out;var flags=System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic;
+   for(int trial=0;trial<150;trial++){
+    var a=root;var b=tip;a.x-=(trial%11)*.009f;b.x+=(trial%7)*.007f;
+    a.y-=(trial%5)*.003f;b.y-=(trial%3)*.003f;
+    typeof(HingedWingProfile).GetField("root",flags).SetValue(profile,a);typeof(HingedWingProfile).GetField("tip",flags).SetValue(profile,b);
+    try{Console.SetOut(TextWriter.Null);Run(new[]{args[0],args[1]});Console.SetOut(log);Console.WriteLine("Validated root "+a.ToString("F6")+" tip "+b.ToString("F6"));return;}
+    catch(Exception){Console.SetOut(log);}
+   }
+   throw new Exception("No closed cut found");
+  }
   var g=new StraightWingGeometry(p,n,uv,tri[0],tri[1]);
   var moving=new HashSet<int>(g.moving);Check(moving.Count>0,"No flap vertices");
   int flapBoundaries=BoundaryCount(g,true);Console.WriteLine("Cut vertices="+g.positions.Length+", flap vertices="+moving.Count+", flap boundary/nonmanifold edges="+flapBoundaries+", stationary="+BoundaryCount(g,false));
@@ -31,13 +43,13 @@ class Program
   Check(g.FlapAreaFraction>0f && g.FlapAreaFraction<.5f,"Invalid measured flap area");
   foreach(int id in moving){
    var q=rest[id];
-   Check((q.x+.1341985f*q.z+.4773043f)/new Vector3(1f,0f,.1341985f).magnitude<=-StraightWingGeometry.HingeGap+.00001f,"Hinge seam clearance lost");
-   Check(q.z>=.18f+StraightWingGeometry.EndGap-.00001f && q.z<=2.85f-StraightWingGeometry.EndGap+.00001f,"End seam clearance lost");
+   Check((q.x+g.slope*q.z+g.offset)/new Vector3(1f,0f,g.slope).magnitude<=-StraightWingGeometry.HingeGap+.00001f,"Hinge seam clearance lost");
+   Check(q.z>=g.tipZ+StraightWingGeometry.EndGap-.00001f && q.z<=g.rootZ-StraightWingGeometry.EndGap+.00001f,"End seam clearance lost");
   }
   Console.WriteLine("PASS visible stowed seam: hinge="+(StraightWingGeometry.HingeGap*1000f)+" mm, ends="+(StraightWingGeometry.EndGap*1000f)+" mm; measured flap planform fraction="+g.FlapAreaFraction);
   int checks=0;
   foreach(Vector3 down in new[]{Vector3.down,Vector3.up}){
-   Vector3 root=down.y<0?StraightWingGeometry.HingeRoot:StraightWingGeometry.ReverseHingeRoot,tip=down.y<0?StraightWingGeometry.HingeTip:StraightWingGeometry.ReverseHingeTip;
+   Vector3 root=g.Root(down.y>0),tip=g.Tip(down.y>0);
    var noTravel=new StraightWingFlapMotion(rest,g.vertices.Select(v=>v.n).ToArray(),g.moving.ToArray(),root,tip,Vector3.left,0f,0f);
    Vector3 axis=(tip-root).normalized,aft=Vector3.ProjectOnPlane(Vector3.left,axis).normalized;
    int trailing=g.moving.OrderByDescending(i=>Vector3.Dot(rest[i]-root,aft)).First();
@@ -48,7 +60,7 @@ class Program
     float blend=Math.Clamp((angle-20f)/10f,0f,1f);blend=blend*blend*(3f-2f*blend);
     Vector3 expectedTravel=(aft*.0254f+projectedDown*.0127f)*blend;
     foreach(int id in g.moving)Check((g.positions[id]-noTravel.positions[id]-expectedTravel).magnitude<.000001f,"Unexpected last-setting travel");
-    foreach(int id in g.moving){Vector3 q=g.positions[id];Check(q.x+.1341985f*q.z+.4773043f<.00001f,"Flap crosses the fixed hinge plane: down="+down+", angle="+angle+", id="+id+", point="+q.ToString("F7"));}
+    foreach(int id in g.moving){Vector3 q=g.positions[id];Check(q.x+g.slope*q.z+g.offset<.00001f,"Flap crosses the fixed hinge plane: down="+down+", angle="+angle+", id="+id+", point="+q.ToString("F7"));}
     if(angle>0)Check(Vector3.Dot(g.positions[trailing]-rest[trailing],projectedDown)>0f,"Trailing edge moved upward");
     for(int i=0;i<rest.Length;i++){
      Check(float.IsFinite(g.positions[i].x)&&float.IsFinite(g.normals[i].x),"Nonfinite pose");
@@ -66,9 +78,9 @@ class Program
    var submeshes=g.triangles.Select(t=>new {triangles=t.Where(remap.ContainsKey).Select(i=>remap[i]).ToArray()}).ToArray();
    g.Pose(0,Vector3.down);var positions=Flat(ids.Select(i=>g.positions[i]));var normals=Flat(ids.Select(i=>g.normals[i]));
    var frames=new List<object>();if(flap)for(int angle=0;angle<=30;angle++){g.Pose(angle,Vector3.down);frames.Add(new {angle,positions=Flat(ids.Select(i=>g.positions[i])),normals=Flat(ids.Select(i=>g.normals[i]))});}
-   meshes.Add(new {name=flap?"Hinged inboard flap":"Straight Wing fixed shell",role=flap?"flap":"wing",positions,normals,submeshes,frames=flap?frames:null});
+   meshes.Add(new {name=flap?"Hinged inboard flap":"Fixed wing shell",role=flap?"flap":"wing",positions,normals,submeshes,frames=flap?frames:null});
   }
-  File.WriteAllText(args[1],JsonSerializer.Serialize(new {schemaVersion=1,wings=new[]{new {id="straight-wing",name="Straight Wing",version="0.22.0",format="raw",hasFlaps=true,meshes}}}));
+  File.WriteAllText(args[1],JsonSerializer.Serialize(new {schemaVersion=1,wings=new[]{new {id=g.profile?.id??"straight-wing",name=g.profile?.label??"Straight Wing",version="0.24.0",format="raw",hasFlaps=true,meshes}}}));
   Console.WriteLine("PASS "+checks+" mirrored deployment poses, rigid motion, stowed closure and retraction; actual C# poses exported.");
   TestForces(g.FlapAreaFraction);
  }
