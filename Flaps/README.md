@@ -66,7 +66,7 @@ Straight Wing uses one rigid inboard trailing-edge flap and retains its native a
 
 ## Wing viewer
 
-Extract the viewer ZIP, then open `aviassembly-wing-preview.html` in Chrome or Edge. Internet access is needed for the rendering library; all model data is embedded in the HTML.
+Extract the viewer ZIP, then open `aviassembly-wing-preview.html` in Chrome or Edge. All 16 models and the drawing code are embedded in the HTML, so it works offline.
 
 Choose a wing from the dropdown, drag to rotate, scroll to zoom, and choose Whole wing or an available device view. Native ailerons are shown at neutral. Modified wings use their generated mod geometry and animation.
 

@@ -21,7 +21,7 @@ Download a DLL to install a mod. The viewer ZIP is for inspecting the models in 
 3. Copy the downloaded DLL into `Aviassembly/BepInEx/plugins/`. Keep only one installed copy of each plugin.
 4. Restart the game. Flap Mod options are purchased and removed in each wing's settings menu. See [Flap Mod](Flaps/README.md) or [Editor Tools](EditorTools/README.md) for controls and setup.
 
-For the viewer, extract the ZIP and open `aviassembly-wing-preview.html` in Chrome or Edge. Internet access is needed for its rendering library.
+For the viewer, extract the ZIP and open `aviassembly-wing-preview.html` in Chrome or Edge. The viewer works offline.
 
 ## Projects
 
