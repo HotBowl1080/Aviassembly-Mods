@@ -1,4 +1,6 @@
-# Aviassembly Editor Tools 0.7.0
+# Aviassembly Editor Tools 0.7.3
+
+The downloadable DLL is version 0.7.3. The development source and tests in this folder are from 0.7.0.
 
 ## Download and install
 
