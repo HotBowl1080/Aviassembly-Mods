@@ -4,7 +4,7 @@ Eight wings support paid flaps. Big Wing always shows the updated model; its fix
 
 Hover over an unlocked aircraft in the load menu to see the number and value of saved flaps and spoilers. Upgrade pricing no longer rescans the aircraft for each visible row every frame.
 
-**v0.25 in-game verification is pending.** The combined DLL compiles, and transaction/save, geometry and force checks pass. Manual campaign and menu testing is still required.
+**v0.25 verification:** 49 checks passed in an isolated Unity player, including native aircraft loading, saved upgrade tooltips, eight wing purchases/refunds and paired undo. Full-game flight and visual checks remain separate.
 
 ## Paid per-wing upgrades in v0.24
 

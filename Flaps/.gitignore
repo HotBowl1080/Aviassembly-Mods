@@ -1,3 +1,4 @@
 tests/**/bin/
 tests/**/obj/
 *.tmp
+.work/

@@ -44,4 +44,4 @@ The upgrade runner exercises the production transaction and persistence classes 
 
 Hover over an unlocked saved aircraft in the load menu to see the flap and spoiler counts and the value of each. This reads the design without changing it. Stock designs show no extra tooltip. The game still calculates the amount due when replacing an aircraft.
 
-The v0.25 DLL compiles against the installed game. Upgrade checks use adapters; the tooltip layout and campaign transactions still need a live game check.
+The v0.25 DLL passed 168 transaction/save adapter assertions and 49 checks in a disposable Unity player using the installed game's aircraft loader and wing prefabs. The native test covers exact cash on repeat load, rollback of an unaffordable underquoted file, the actual saved-aircraft tooltip opening/closing, purchases/refunds on all eight wings, and one undo restoring a paired purchase. It runs headlessly: the checks cover tooltip contents and visibility, not screen placement or full-game frame times. Run `Flaps/tests/Runtime/Run.ps1 -GameDir '<game folder>'` to repeat it. The player and its generated design stay under `Flaps/.work/`.
