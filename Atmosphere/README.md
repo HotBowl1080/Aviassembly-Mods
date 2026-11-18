@@ -1,4 +1,4 @@
-# Aviassembly Atmosphere 0.13.0
+# Aviassembly Atmosphere 0.14.0
 
 [Download Aviassembly.Atmosphere.dll](https://github.com/HotBowl1080/Aviassembly-Mods/raw/refs/heads/main/Atmosphere/Aviassembly.Atmosphere.dll) · [SHA256](SHA256.txt)
 
@@ -10,6 +10,14 @@ Manual weather takes effect when you press **Apply**. In heavy fog the ocean fad
 Each paved runway end has a widening corridor cleared of generated trees and rocks. The end requiring less terrain work normally has a full MALSR with five outer flashers running toward the threshold. The opposite end normally has steady bars, and long runways with two clear approaches can have full systems in both directions. Lamp housings sit on crossarms or posts anchored to terrain or seabed.
 
 The end markers sit outside the shoulders. They show green on arrival and red from the runway, with at least 60 game units clear down the center beyond each end. PAPI units have a solid hooded cabinet, a recessed lens and three ground-mounted footplates. The mod checks the four sightlines for fences and buildings, preferring the left shoulder and using the right when needed. Two white and two red indicate a 3° approach. More red means low, and more white means high.
+
+## Time of day
+
+Press **O**, then **Time of day**. A new clock starts at noon. At **1×**, one real second advances the clock one game minute, so a full day takes 24 minutes of active play.
+
+Choose **Dawn** (06:00), **Noon** (12:00), **Dusk** (18:00) or **Midnight** (00:00), or step an hour earlier or later. **Lock time** holds the current lighting while you fly. You can still select another hour while locked. **Unlock time** resumes from that hour. **Slower** and **Faster** select 0.25×, 0.5×, 1×, 2×, 4× or 8×. The panel shows how many real minutes a day will take at the selected speed.
+
+Clock controls take effect immediately. The speed changes the clock independently of aircraft physics and weather. Time carries across flights and game restarts, and pauses during loading or a game pause. Flight lighting follows the clock, including the sun, terrain, water, clouds and fog. The lit runway fixtures remain visible at night.
 
 ## Flying the approach
 
