@@ -1,4 +1,4 @@
-# Aviassembly Atmosphere 0.16.0
+# Aviassembly Atmosphere 0.17.0
 
 [Download Aviassembly.Atmosphere.dll](https://github.com/HotBowl1080/Aviassembly-Mods/raw/refs/heads/main/Atmosphere/Aviassembly.Atmosphere.dll) · [SHA256](SHA256.txt)
 
@@ -14,6 +14,10 @@ The end markers sit outside the shoulders. They show green on arrival and red fr
 A parked aircraft holds position in heavy crosswinds, and the ocean fog respects foreground depth. The GPS and approach cue give fuel warnings room to appear.
 
 When you fly toward an approach gate from the wrong side, follow the **Rejoin** gates back to its inbound course. Guidance checks the turn against terrain and keeps your chosen runway and remaining gates. Nearby airport icons on the map show their runway numbers.
+
+Track a mission on the map. When its current objective is a runway airport within 14 km, guidance automatically chooses a runway and verifies the entry against terrain. Cargo missions follow the pickup and then the delivery airport. Arrival direction and wind influence the choice, and a player map pin still works independently.
+
+Choose a runway manually to override the mission. **Clear** dismisses the current leg, and **Advanced guidance → Mission approaches** lets you turn automatic selection off.
 
 For an easy arrival, choose **Base**, its **Easiest** runway and **Straight in**. In IFR, fly through the bright box. The dim outline previews the next box and a small arrow points to an offscreen box. Box counters and written PAPI instructions are hidden. Open arrivals have roughly 1,500 game units between boxes, with tighter spacing where the route needs to clear a ridge.
 
