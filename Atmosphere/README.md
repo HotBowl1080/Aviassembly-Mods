@@ -1,4 +1,4 @@
-# Aviassembly Atmosphere 0.20.1
+# Aviassembly Atmosphere 0.20.2
 
 [Download Aviassembly.Atmosphere.dll](https://github.com/HotBowl1080/Aviassembly-Mods/raw/refs/heads/main/Atmosphere/Aviassembly.Atmosphere.dll) · [SHA256](SHA256.txt)
 
@@ -14,7 +14,7 @@ With the game closed, copy the DLL to `BepInEx/plugins/Aviassembly.Atmosphere/`.
 | Instruments and GPS | Press **F7** for attitude, airspeed, altitude, vertical speed, heading and ground track. Follow a map pin or mission objective and save custom HUD layouts. |
 | Airport approaches | Select a runway within 14 km, or track a mission for automatic selection. Fly a straight or RNAV entry, rejoin after a wrong-way arrival or choose **Go around**. |
 | Approach boxes and lights | Fly through the bright box and use the faint one to anticipate the turn. Boxes default to IFR and can be enabled in clear weather. The final box lines up with the runway’s 3° PAPI slope. |
-| Map | Open the full geographic chart in Sandbox. Nearby runway airports show their runway numbers, and Career retains map exploration. |
+| Map | Open the full geographic chart in Sandbox. Airport icons are selectable across the chart, including unexplored areas in Career. Paved airports show their runway numbers. |
 
 
 Manual weather takes effect when you press **Apply**. In heavy fog the ocean fades with distance, and water close to the aircraft remains visible.
@@ -25,7 +25,7 @@ The end markers sit outside the shoulders. They show green on arrival and red fr
 
 A parked aircraft holds position in heavy crosswinds, and the ocean fog respects foreground depth. The GPS and approach cue give fuel warnings room to appear.
 
-When you fly toward an approach gate from the wrong side, follow the **Rejoin** gates back to its inbound course. Guidance checks the turn against terrain and keeps your chosen runway and remaining gates. Nearby airport icons on the map show their runway numbers.
+When you fly toward an approach gate from the wrong side, follow the **Rejoin** gates back to its inbound course. Guidance checks the turn against terrain and keeps your chosen runway and remaining gates. Paved airports show their runway numbers on the map.
 
 Track a mission on the map. When its current objective is a runway airport within 14 km, guidance automatically chooses a runway and verifies the entry against terrain. Cargo missions follow the pickup and then the delivery airport. Arrival direction and wind influence the choice, and a player map pin still works independently.
 
@@ -65,7 +65,7 @@ Click the stock **Map** button in Sandbox to see the full chart, including unexp
 
 In flight, click the small arrow below the upper right controls. Select an airport within 14 km, choose the runway by its inbound heading, then pick **Straight in**, **RNAV left** or **RNAV right**. In IFR weather, follow the bright gate through its face. A faint box previews the next gate if it is also in range, and an arrow at the screen edge points toward an entry outside your view. Outer gates are about 55 to 58 units tall away from the starting Base. The final gate lines up on the 3° PAPI slope. A missed gate stays active so you can circle back. Choose **Go Around** for a terrain-checked climb and return, or **Clear** to stop guidance.
 
-Airport icons appear within 300 units and custom markers appear in the flight view within 200 units. Nearby gates remain visible in IFR when boxes are enabled. Runway lights carry farther in fog and terrain still blocks their glow.
+Hover over any charted airport for mission details, then click it to track an available objective. In the flight view, airport markers appear within 300 units and custom markers within 200. Nearby gates remain visible in IFR when boxes are enabled. Runway lights carry farther in fog and terrain still blocks their glow.
 
 ## Fog and instrument approaches
 
