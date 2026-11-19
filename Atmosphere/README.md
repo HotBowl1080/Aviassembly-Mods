@@ -1,8 +1,20 @@
-# Aviassembly Atmosphere 0.17.0
+# Aviassembly Atmosphere 0.18.0
 
 [Download Aviassembly.Atmosphere.dll](https://github.com/HotBowl1080/Aviassembly-Mods/raw/refs/heads/main/Atmosphere/Aviassembly.Atmosphere.dll) · [SHA256](SHA256.txt)
 
 With the game closed, copy the DLL to `BepInEx/plugins/Aviassembly.Atmosphere/`. Press **O** for weather and HUD customization, or **F7** for gauges. A map pin or tracked objective activates GPS. On final approach, two white and two red slope lights indicate the nominal 3° path.
+
+
+## Feature overview
+
+| Feature | What you can do |
+| --- | --- |
+| Weather and flight physics | Press **O** to choose from eight weather presets or enable automatic changes. Wind, gusts, air density and wet runway grip affect how the aircraft flies and handles. |
+| Day and night | A day takes 24 minutes at **1×**. Change the speed, jump to a time of day or lock the clock. |
+| Instruments and GPS | Press **F7** for attitude, airspeed, altitude, vertical speed, heading and ground track. Follow a map pin or mission objective and save custom HUD layouts. |
+| Airport approaches | Select a runway within 14 km, or track a mission for automatic selection. Fly a straight or RNAV entry, rejoin after a wrong-way arrival or choose **Go around**. |
+| Approach boxes and lights | Fly through the bright box and use the faint one to anticipate the turn. Boxes default to IFR and can be enabled in clear weather. The final pair lines up with the runway’s 3° PAPI slope. |
+| Map | Open the full geographic chart in Sandbox. Nearby runway airports show their runway numbers, and Career retains map exploration. |
 
 
 Manual weather takes effect when you press **Apply**. In heavy fog the ocean fades with distance, and water close to the aircraft remains visible.
@@ -39,7 +51,7 @@ At night the runway markings, aircraft and nearby terrain pick up soft moonlight
 
 The top cue shows your ground track (**TRK**), the bearing to the next gate (**BRG**), and the altitude for that gate. **Fly left 12 u** means move 12 game units left to regain the course. **High** and **low** compare your current altitude with the descent line at your position between gates. When you are outside the checked corridor, the cue shows the course to rejoin before giving vertical guidance again.
 
-After a near miss, guidance can pick up the next box when the intercept clears terrain. Open the arrow for **Go around** to climb and turn back toward the entry, or **Change approach** to select another arrival. Cancelling a search keeps your present gate. The return and the arrival each have their own gate count. At the starting Base, the return uses wider gates and favors gentler climbs and wider turns when terrain allows.
+After a near miss, guidance can pick up the next box when the intercept clears terrain. Open the arrow for **Go around** to climb and turn back toward the entry, or **Change approach** to select another arrival. Cancelling a search keeps your present gate. At the starting Base, the return uses wider gates and favors gentler climbs and wider turns when terrain allows.
 
 After crossing the threshold on the selected approach, the cue shows runway distance remaining. Touching down in the selected direction clears guidance once the aircraft settles, even if you skipped a gate. Flying beyond the runway leaves **Go around** available.
 
@@ -47,20 +59,20 @@ After crossing the threshold on the selected approach, the cue shows runway dist
 
 Click the stock **Map** button in Sandbox to see the full chart, including unexplored land. Pan or zoom to inspect it. Reopening the map brings the whole chart back into view. Career keeps its exploration settings.
 
-In flight, click the small arrow below the upper right controls. Select an airport within 14 km, choose the runway by its inbound heading, then pick **Straight in**, **RNAV left** or **RNAV right**. In IFR weather, follow the bright gate through its face. A faint box previews the next gate, and the compass cue points toward an entry outside your view. Outer gates are about 55 to 58 units tall away from the starting Base. The last two tighten around the 3° final. A missed gate stays active so you can circle back. Choose **Go Around** for a terrain-checked climb and return, or **Clear** to stop guidance.
+In flight, click the small arrow below the upper right controls. Select an airport within 14 km, choose the runway by its inbound heading, then pick **Straight in**, **RNAV left** or **RNAV right**. In IFR weather, follow the bright gate through its face. A faint box previews the next gate, and an arrow at the screen edge points toward an entry outside your view. Outer gates are about 55 to 58 units tall away from the starting Base. The last two tighten around the 3° final. A missed gate stays active so you can circle back. Choose **Go Around** for a terrain-checked climb and return, or **Clear** to stop guidance.
 
 Airport icons appear within 300 units and custom markers appear in the flight view within 200 units. Nearby gates remain visible in IFR when boxes are enabled. Runway lights carry farther in fog and terrain still blocks their glow.
 
 ## Fog and instrument approaches
 
-Approach boxes appear only in local IFR weather. They fade in as visibility drops and grow easier to see as you approach each gate. In clear air, the instrument cue gives the bearing and horizontal range to the next gate, its target altitude on the stock altitude scale, and your ground track. At low speed the cue switches to heading.
+By default, approach boxes appear in local IFR weather. To see them in any weather, open the top-right approach arrow, choose **Advanced guidance** and switch **Clear-weather boxes** on. They fade in as visibility drops and grow easier to see as you approach each gate. With boxes hidden, the instrument cue gives the bearing and horizontal range to the next gate, its target altitude on the stock altitude scale, and your ground track. At low speed the cue switches to heading.
 
-Open the approach dropdown and select **Advanced guidance**, then enable **Instruments only** to hide the boxes even in heavy fog. The choice is saved. Gate crossings, go-arounds and landing completion work in both modes.
+Open the approach dropdown and select **Advanced guidance**, then enable **Instruments only** to hide the boxes even in heavy fog. **Instruments only** takes priority in every weather condition. Both settings are saved, and switching modes keeps your current route and gate. Gate crossings, go-arounds and landing completion work with either display.
 
 Ocean tiles now join the fog pass as they stream into view. Rain renders in front of the fogged water, and the shoreline uses the native water surface height.
 
 ## Choosing an approach
 
-For a first landing, choose the starting **Base**, pick the runway marked **Easiest**, and select **Straight in**. The Base has the largest boxes, with an outer gate about 72 units tall. Its entries limit changes of track to 17°. In open terrain the gates on its final are about 810 units apart.
+For a first landing, choose the starting **Base**, pick the runway marked **Easiest**, and select **Straight in**. The Base has the largest boxes, with an outer gate about 72 units tall. Its entries limit changes of track to 17°. In open terrain the gates on its final are roughly 1,500 units apart.
 
 Other airports use smaller boxes and can ask for more precise turns. Runway length, the terrain on each side and the runway direction shape the route. A ridge can shorten the straight final or send an RNAV entry through an adjacent valley. The planner checks the width between checkpoints and the boxes themselves, and the final two gates stay aligned with the runway on a 3° descent.
