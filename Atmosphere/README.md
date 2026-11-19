@@ -1,4 +1,4 @@
-# Aviassembly Atmosphere 0.18.0
+# Aviassembly Atmosphere 0.19.0
 
 [Download Aviassembly.Atmosphere.dll](https://github.com/HotBowl1080/Aviassembly-Mods/raw/refs/heads/main/Atmosphere/Aviassembly.Atmosphere.dll) · [SHA256](SHA256.txt)
 
@@ -31,7 +31,7 @@ Track a mission on the map. When its current objective is a runway airport withi
 
 Choose a runway manually to override the mission. **Clear** dismisses the current leg, and **Advanced guidance → Mission approaches** lets you turn automatic selection off.
 
-For an easy arrival, choose **Base**, its **Easiest** runway and **Straight in**. In IFR, fly through the bright box. The dim outline previews the next box and a small arrow points to an offscreen box. Box counters and written PAPI instructions are hidden. Open arrivals have roughly 1,500 game units between boxes, with tighter spacing where the route needs to clear a ridge.
+For an easy arrival, choose **Base**, its **Easiest** runway and **Straight in**. In IFR, fly through the bright box. The dim outline previews the next box and a small arrow points to an offscreen box. Box counters and written PAPI instructions are hidden. Open finals now have about 2,450 to 2,540 game units between boxes. The planner checks whether a rounded turn fits through each box and leaves enough distance for the next turn. The dim box appears far enough ahead to preview the bend. Mountain finals can be shorter to clear a ridge while staying on the PAPI slope.
 
 The last two box centers and the four PAPI lights share a 3° line to the same aim point inside the runway. Two white and two red means on slope, more white means high and more red means low. The last box is 165 units before the threshold.
 
@@ -73,6 +73,6 @@ Ocean tiles now join the fog pass as they stream into view. Rain renders in fron
 
 ## Choosing an approach
 
-For a first landing, choose the starting **Base**, pick the runway marked **Easiest**, and select **Straight in**. The Base has the largest boxes, with an outer gate about 72 units tall. Its entries limit changes of track to 17°. In open terrain the gates on its final are roughly 1,500 units apart.
+For a first landing, choose the starting **Base**, pick the runway marked **Easiest**, and select **Straight in**. The Base has the largest boxes, with an outer gate about 72 units tall. Its entries limit changes of track to 17°. On the open Base RWY 36 final, the gates are 2,540 game units apart.
 
 Other airports use smaller boxes and can ask for more precise turns. Runway length, the terrain on each side and the runway direction shape the route. A ridge can shorten the straight final or send an RNAV entry through an adjacent valley. The planner checks the width between checkpoints and the boxes themselves, and the final two gates stay aligned with the runway on a 3° descent.
