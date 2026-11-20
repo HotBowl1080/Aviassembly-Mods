@@ -1,4 +1,4 @@
-# Aviassembly Atmosphere 0.20.2
+# Aviassembly Atmosphere 0.26.1
 
 [Download Aviassembly.Atmosphere.dll](https://github.com/HotBowl1080/Aviassembly-Mods/raw/refs/heads/main/Atmosphere/Aviassembly.Atmosphere.dll) · [SHA256](SHA256.txt)
 
@@ -12,7 +12,7 @@ With the game closed, copy the DLL to `BepInEx/plugins/Aviassembly.Atmosphere/`.
 | Weather and flight physics | Press **O** to choose from eight weather presets or enable automatic changes. Wind, gusts, air density and wet runway grip affect how the aircraft flies and handles. |
 | Day and night | A day takes 24 minutes at **1×**. Change the speed, jump to a time of day or lock the clock. |
 | Instruments and GPS | Press **F7** for attitude, airspeed, altitude, vertical speed, heading and ground track. Follow a map pin or mission objective and save custom HUD layouts. |
-| Airport approaches | Select a runway within 14 km, or track a mission for automatic selection. Fly a straight or RNAV entry, rejoin after a wrong-way arrival or choose **Go around**. |
+| Airport approaches | Choose a runway in Landing, or track a mission for automatic selection. Follow the checked approach, or choose **Go around** to climb and rejoin. |
 | Approach boxes and lights | Fly through the bright box and use the faint one to anticipate the turn. Boxes default to IFR and can be enabled in clear weather. The final box lines up with the runway’s 3° PAPI slope. |
 | Map | Open the full geographic chart in Sandbox. Airport icons are selectable across the chart, including unexplored areas in Career. Paved airports show their runway numbers. |
 
@@ -25,17 +25,15 @@ The end markers sit outside the shoulders. They show green on arrival and red fr
 
 A parked aircraft holds position in heavy crosswinds, and the ocean fog respects foreground depth. The GPS and approach cue give fuel warnings room to appear.
 
-When you fly toward an approach gate from the wrong side, follow the **Rejoin** gates back to its inbound course. Guidance checks the turn against terrain and keeps your chosen runway and remaining gates. Paved airports show their runway numbers on the map.
+If you miss an approach gate or cross it the wrong way, return to its entry side and cross it inbound. Paved airports show their runway numbers on the map.
 
 Track a mission on the map. When its current objective is a runway airport within 14 km, guidance automatically chooses a runway and verifies the entry against terrain. Cargo missions follow the pickup and then the delivery airport. Arrival direction and wind influence the choice, and a player map pin still works independently.
 
 Choose a runway manually to override the mission. **Clear** dismisses the current leg, and **Advanced guidance → Mission approaches** lets you turn automatic selection off.
 
-For an easy arrival, choose **Base**, its **Easiest** runway and **Straight in**. In IFR, fly through the bright box. The dim outline previews the next box and a small arrow points to an offscreen box. Box counters and written PAPI instructions are hidden. Open finals now have about 1,750 game units between boxes. The planner checks whether a rounded turn fits through each box and leaves enough distance for the next turn. Both boxes fade in from 1,200 to 900 units, and the aircraft silhouette hides the outline and fill over its wings and fuselage. Follow the bearing cue between boxes. Mountain finals can be shorter to clear a ridge while staying on the PAPI slope.
-
 The final box, threshold reference and four PAPI lights share a 3° line to the same aim point inside the runway. Two white and two red means on slope, more white means high and more red means low. The handoff distance varies with the terrain. A short final can use one larger box followed by PAPI guidance.
 
-**High terrain** beside the selector flags an obstructed direct final. **Short final** and **Steep descent** describe the selected approach. Each selection checks the current world's terrain. Where a standard entry fails, the planner searches out from the runway for a valley and checks the full corridor. If a ridge hides the next gate, the HUD hides that box and checks a rejoin from the aircraft. **Try RWY** checks the other runway end when no clear route is found.
+The planner checks the current world's terrain when selecting a runway. It can search for a different course or a higher entry if the direct course crosses terrain.
 
 The native landscape keeps its generated elevations. Approach bars follow the ground surface, and rows that would project into the glide path are omitted.
 
@@ -53,23 +51,25 @@ At night the runway markings, aircraft and nearby terrain pick up soft moonlight
 
 ## Flying the approach
 
-The top cue shows your ground track (**TRK**), the bearing to the next gate (**BRG**), and the altitude for that gate. **Fly left 12 u** means move 12 game units left to regain the course. **High** and **low** compare your current altitude with the descent line at your position between gates. When you are outside the checked corridor, the cue shows the course to rejoin before giving vertical guidance again.
+Open **Landing**, choose an airport and runway, then select **Prepare landing**. To select the V2 planner, open **Landing → Advanced guidance**. In V2, **Go around** checks a climb course and arms the same runway for rejoining after the climb.
 
-After a near miss, guidance can pick up the next box when the intercept clears terrain. Open the arrow for **Go around** to climb and turn back toward the entry, or **Change approach** to select another arrival. Cancelling a search keeps your present gate. At the starting Base, the return uses wider gates and favors gentler climbs and wider turns when terrain allows.
+On a low departure toward The Hospital, **Climb before joining** means a higher join has cleared the terrain survey. Use the altitude cue while the planner checks a join from your new position. Follow the turn cue once a join is ready.
 
-After crossing the threshold on the selected approach, the cue shows runway distance remaining. Touching down in the selected direction clears guidance once the aircraft settles, even if you skipped a gate. Flying beyond the runway leaves **Go around** available.
+The approach card shows your current altitude under **NOW** and the altitude to aim for along the current leg under **TARGET**. **GATE ALT** gives the next checkpoint's altitude. Turn instructions use your actual ground track. Near touchdown, the card gives runway height and vertical speed.
+
+Open **Landing → Advanced guidance** and switch **Landing scoring** off to hide touchdown scores. The choice is saved. Press **F6** or **R3** to open the approach GPS. If F6 also starts your Performance 240 benchmark, use **Show GPS** in Landing.
 
 ## Sandbox map and runway approaches
 
 Click the stock **Map** button in Sandbox to see the full chart, including unexplored land. Pan or zoom to inspect it. Reopening the map brings the whole chart back into view. Career keeps its exploration settings.
 
-In flight, click the small arrow below the upper right controls. Select an airport within 14 km, choose the runway by its inbound heading, then pick **Straight in**, **RNAV left** or **RNAV right**. In IFR weather, follow the bright gate through its face. A faint box previews the next gate if it is also in range, and an arrow at the screen edge points toward an entry outside your view. Outer gates are about 55 to 58 units tall away from the starting Base. The final gate lines up on the 3° PAPI slope. A missed gate stays active so you can circle back. Choose **Go Around** for a terrain-checked climb and return, or **Clear** to stop guidance.
+Open the Landing menu below the upper right controls. Select an airport and runway to prepare an approach. In IFR weather, fly through the bright gate inbound. A faint box previews the next gate when it is in range. The final gate leads to the runway's 3° PAPI slope.
 
 Hover over any charted airport for mission details, then click it to track an available objective. In the flight view, airport markers appear within 300 units and custom markers within 200. Nearby gates remain visible in IFR when boxes are enabled. Runway lights carry farther in fog and terrain still blocks their glow.
 
 ## Fog and instrument approaches
 
-By default, approach boxes appear in local IFR weather. To see them in any weather, open the top-right approach arrow, choose **Advanced guidance** and switch **Clear-weather boxes** on. They fade in as visibility drops and grow easier to see as you approach each gate. With boxes hidden, the instrument cue gives the bearing and horizontal range to the next gate, its target altitude on the stock altitude scale, and your ground track. At low speed the cue switches to heading.
+By default, approach boxes appear in local IFR weather. To see them in any weather, open the top-right approach arrow, choose **Advanced guidance** and switch **Clear-weather boxes** on. They fade in as visibility drops and grow easier to see as you approach each gate. With boxes hidden, follow the bearing, altitude and steering cues on the approach card.
 
 Open the approach dropdown and select **Advanced guidance**, then enable **Instruments only** to hide the boxes even in heavy fog. **Instruments only** takes priority in every weather condition. Both settings are saved, and switching modes keeps your current route and gate. Gate crossings, go-arounds and landing completion work with either display.
 
@@ -77,6 +77,6 @@ Ocean tiles now join the fog pass as they stream into view. Rain renders in fron
 
 ## Choosing an approach
 
-For a first landing, choose the starting **Base**, pick the runway marked **Easiest**, and select **Straight in**. The Base has the largest boxes, with an outer gate about 72 units tall. Its entries limit changes of track to 15°. On the open Base RWY 36 final, the gates are 1,750 game units apart.
+For a first landing, choose **Base**, pick the runway marked **Easiest**, and select **Prepare landing**. The Base has the largest boxes, with an outer gate about 72 units tall. Its entries limit changes of track to 15°. On the open Base RWY 36 final, the gates are 1,750 game units apart.
 
 Other airports use smaller boxes and can ask for more precise turns. Runway length, the terrain on each side and the runway direction shape the route. A ridge can shorten the straight final or send an RNAV entry through an adjacent valley. The planner checks the width between checkpoints and the boxes themselves, and the last gate leads to the PAPI aim point on a 3° descent.

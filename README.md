@@ -8,11 +8,13 @@ Mods and development tools for Aviassembly. Current downloads live on `main`, or
 | --- | --- | --- |
 | [Flap Mod ZIP](https://github.com/HotBowl1080/Aviassembly-Mods/raw/refs/heads/main/Flaps/releases/1.0.0/Flap-Mod-1.0.0.zip) | 13 flap-capable wings, Big Wing spoilers, saved purchases and controller input | 1.0.0 |
 | [Editor Tools DLL](https://github.com/HotBowl1080/Aviassembly-Mods/raw/refs/heads/main/EditorTools/Aviassembly.EditorTools.dll) | Camera focus, precision editing, multi-selection, part hiding and propeller clearance | v0.7.3 |
-| [Atmosphere DLL](https://github.com/HotBowl1080/Aviassembly-Mods/raw/refs/heads/main/Atmosphere/Aviassembly.Atmosphere.dll) | Weather, day and night, flight instruments, mission and manual approaches with optional clear-weather boxes, and the full Sandbox chart | v0.20.2 |
+| [Atmosphere DLL](https://github.com/HotBowl1080/Aviassembly-Mods/raw/refs/heads/main/Atmosphere/Aviassembly.Atmosphere.dll) | Dynamic weather, flight instruments, terrain checked approaches, climb and turn guidance, and optional landing scores | v0.26.1 |
 | [Performance 240 DLL](https://github.com/HotBowl1080/Aviassembly-Mods/raw/refs/heads/main/Performance240/Aviassembly.Performance240.dll) | Adaptive rendering settings for a 240 FPS target | v1.0.1 |
 | [Wing viewer ZIP](https://github.com/HotBowl1080/Aviassembly-Mods/raw/refs/heads/main/Flaps/aviassembly-wing-preview.zip) | One HTML viewer with all 16 native wing parts | Optional preview; not a game plugin |
 
 For Flap Mod, download the mod ZIP and follow its included install instructions. Other projects offer DLL downloads. The viewer ZIP is for inspecting the models in a browser.
+
+The earlier [Flap Mod 0.23.1 ZIP](https://github.com/HotBowl1080/Aviassembly-Mods/raw/refs/heads/main/Flaps/releases/0.23.1/Flap_Mod_0.23.1.zip) is also available.
 
 ## Install
 
