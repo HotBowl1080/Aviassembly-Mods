@@ -1,7 +1,8 @@
-param([string]$GameDir = 'E:\SteamLibrary\steamapps\common\Aviassembly')
+param([string]$GameDir = 'E:\SteamLibrary\steamapps\common\Aviassembly', [string]$PluginPath, [ValidateSet('Wing','Tailwing04')][string]$CompatibilityWing, [switch]$ReadLegacy, [string]$TestPackage, [string]$UpgradeFrom)
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
-$testRoot = [IO.Path]::GetFullPath((Join-Path $projectRoot '.work\UnityTestHost'))
+$relativeHost=if($TestPackage){if($UpgradeFrom){'.work\UpgradePackageHost'}else{'.work\CleanPackageHost'}}else{'.work\UnityTestHost'}
+$testRoot = [IO.Path]::GetFullPath((Join-Path $projectRoot $relativeHost))
 if (!$testRoot.StartsWith([IO.Path]::GetFullPath((Join-Path $projectRoot '.work')) + '\', [StringComparison]::OrdinalIgnoreCase)) { throw 'Invalid test location.' }
 New-Item -ItemType Directory -Path $testRoot -Force | Out-Null
 # Only copy required player files; no existing plugins, configs, saves, or binaries are modified in the real installation.
@@ -44,13 +45,31 @@ $assembly.Dispose()
 Set-Content -LiteralPath (Join-Path $testRoot 'FLAP_TEST_HOST_ONLY') -Value 'Disposable wing upgrade fixture'
 $plugins = Join-Path $testRoot 'BepInEx\plugins'
 New-Item -ItemType Directory -Force -Path $plugins | Out-Null
-$release = Join-Path $projectRoot 'AviassemblyFlaps.dll'
-Copy-Item -LiteralPath $release -Destination $plugins -Force
+$release = if ($PluginPath) { (Resolve-Path -LiteralPath $PluginPath).Path } else { Join-Path $projectRoot 'AviassemblyFlaps.dll' }
+if ($TestPackage) {
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $target=Join-Path $plugins 'AviassemblyFlaps\AviassemblyFlaps.dll'
+    if ($UpgradeFrom) {
+        $target=Join-Path $plugins 'AviassemblyFlaps.dll'
+        Copy-Item -LiteralPath $UpgradeFrom -Destination $target -Force
+    }
+    [void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($target))
+    $zip=[IO.Compression.ZipFile]::OpenRead((Resolve-Path -LiteralPath $TestPackage).Path)
+    try {
+        $entry=$zip.GetEntry('BepInEx/plugins/AviassemblyFlaps/AviassemblyFlaps.dll')
+        [IO.Compression.ZipFileExtensions]::ExtractToFile($entry,$target,$true)
+    } finally {$zip.Dispose()}
+    if (@(Get-ChildItem $plugins -Recurse -Filter 'AviassemblyFlaps.dll').Count -ne 1 -or (Get-FileHash $target).Hash -ne (Get-FileHash $release).Hash) {throw 'Installed DLL mismatch or duplicate'}
+} else {Copy-Item -LiteralPath $release -Destination (Join-Path $plugins 'AviassemblyFlaps.dll') -Force}
 $compiler = Get-ChildItem 'C:\Program Files\dotnet\sdk\*\Roslyn\bincore\csc.dll' | Sort-Object FullName -Descending | Select-Object -First 1
 $arguments = @('/nologo','/target:library','/nostdlib+','/langversion:latest',('/out:' + (Join-Path $plugins 'WingRuntimeFixture.dll')),('/reference:' + $release))
 foreach ($lib in Get-ChildItem (Join-Path $GameDir 'Aviassembly_Data\Managed') -Filter '*.dll') { $arguments += '/reference:' + $lib.FullName }
 foreach ($name in @('BepInEx.dll','0Harmony.dll')) { $arguments += '/reference:' + (Join-Path $GameDir ('BepInEx\core\' + $name)) }
-$arguments += (Join-Path $PSScriptRoot 'WingRuntimeFixture.cs')
+if ($CompatibilityWing) {
+    $arguments += (Join-Path $PSScriptRoot 'CompatibilityFixture.cs')
+    $mode = if ($ReadLegacy) { 'load' } else { 'save' }
+    Set-Content -LiteralPath (Join-Path $testRoot 'compatibility-case.txt') -Value "$mode $CompatibilityWing"
+} else { $arguments += (Join-Path $PSScriptRoot 'WingRuntimeFixture.cs') }
 & dotnet $compiler.FullName @arguments
 if ($LASTEXITCODE -ne 0) { throw 'Runtime fixture did not compile.' }
 $report = Join-Path $testRoot 'flap-results.txt'

@@ -77,11 +77,11 @@ internal static class WingGeometryCache
 [HarmonyPatch(typeof(PartPrefabs),"Awake")]
 internal static class PrepareWingGeometry
 {
-    static void Postfix()
+    static void Postfix(List<GameObject> ___allPartPrefabs)
     {
-        var prefabs=PartPrefabs.GetAllPrefabs();if(prefabs==null)return;
+        var prefabs=___allPartPrefabs;if(prefabs==null)return;
         foreach(var prefab in prefabs){
-            if(!prefab)continue;
+            if(!prefab || WingFlapIds.Of(prefab.name)>=9)continue;
             var wing=prefab.GetComponentInChildren<Wing>(true);if(!FlapsPlugin.Supports(wing))continue;
             var filter=wing.GetComponent<MeshFilter>();if(filter && filter.sharedMesh && filter.sharedMesh.subMeshCount>=1 && filter.sharedMesh.subMeshCount<=2)
                 WingGeometryCache.Request(filter.sharedMesh,FlapsPlugin.SupportsSpoilers(wing));

@@ -23,10 +23,7 @@ internal sealed class HingedWingProfile
         return null;
     }
     internal static byte Code(string name){
-        if(name.StartsWith("BigWing",StringComparison.Ordinal))return 1;
-        if(name.StartsWith("StraightWing",StringComparison.Ordinal))return 2;
-        foreach(var profile in profiles)if(name==profile.prefab || name.StartsWith(profile.prefab+"(",StringComparison.Ordinal))return profile.code;
-        return 0;
+        return WingFlapIds.Of(name);
     }
     internal static Vector3 Hinge(Vector4 range,bool inverted){return new Vector3(range.y,inverted?range.w:range.z,range.x);}
 }

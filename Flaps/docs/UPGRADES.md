@@ -1,6 +1,6 @@
 # Paid wing upgrades
 
-Flap Mod v0.24 provides separate paid Flaps and Spoilers options to the existing wing settings menu.
+Flap Mod 1.0.0 adds separate Flaps and Spoilers purchases to the wing settings menu.
 
 ## Prices and eligibility
 
@@ -8,7 +8,8 @@ Flap Mod v0.24 provides separate paid Flaps and Spoilers options to the existing
 | --- | --- | --- |
 | Big Wing | 25% of the wing's base price | 25% of the wing's base price |
 | Straight Wing, Small Recreational Wing, Glider Wing, Electron Wing, Small Jet Wing, Delta Wing 02, Wing | 25% of the wing's base price | Not offered |
-| Other wings | Not offered yet | Not offered yet |
+| Delta Wing 01, Tail Wing, Tailwing 02, Tailwing 03, Tailwing 04 | 25% (stock steering surface also deploys as flap) | Not offered |
+| Biplane Wing, Small Canard, Wood Wing | Not offered | Not offered |
 
 Each option uses the unmodified wing price. Buying a second option does not increase its price by charging a percentage of an already upgraded wing.
 
@@ -44,4 +45,4 @@ The upgrade runner exercises the production transaction and persistence classes 
 
 Hover over an unlocked saved aircraft in the load menu to see the flap and spoiler counts and the value of each. This reads the design without changing it. Stock designs show no extra tooltip. The game still calculates the amount due when replacing an aircraft.
 
-The v0.25 DLL passed 168 transaction/save adapter assertions and 49 checks in a disposable Unity player using the installed game's aircraft loader and wing prefabs. The native test covers exact cash on repeat load, rollback of an unaffordable underquoted file, the actual saved-aircraft tooltip opening/closing, purchases/refunds on all eight wings, and one undo restoring a paired purchase. It runs headlessly: the checks cover tooltip contents and visibility, not screen placement or full-game frame times. Run `Flaps/tests/Runtime/Run.ps1 -GameDir '<game folder>'` to repeat it. The player and its generated design stay under `Flaps/.work/`.
+The 1.0.0 build passed 168 transaction and save checks. The packaged DLL passed 77 checks in each of two isolated game installations, a fresh install and an upgrade from 0.25. These exercise repeat aircraft loads, rollback of an unaffordable design, the saved-aircraft tooltip, purchases and refunds on 13 wings, mirrored undo and forces during flap travel. The surface suite passed 496 checks. Separate compatibility runs restored designs written by the released 0.25 and 0.23.1 plugins. Run `Flaps/tests/Runtime/Run.ps1 -GameDir '<game folder>'` and `Flaps/tests/SurfaceRuntime/Run.ps1 -GameDir '<game folder>'` from the repository to repeat the game checks. The isolated players and generated designs stay under `Flaps/.work/`.

@@ -74,7 +74,7 @@ public sealed class WingRuntimeFixture : BaseUnityPlugin
         money.money=surcharge-1;
         Check(!storage.LoadFromFile(file),"Underquoted unaffordable design is rejected");
         Check(Math.Abs(storage.GetPlaneCost()-stock)<.01f && Math.Abs(money.money-(surcharge-1))<.01f,"Rejection restores the original aircraft and cash");
-        foreach(var name in new[]{"BigWing","StraightWing","SmallRecreationalWing","GliderWing","ElectronWing","SmallJetWing","DeltaWing02","Wing"}){
+        foreach(var name in new[]{"BigWing","StraightWing","SmallRecreationalWing","GliderWing","ElectronWing","SmallJetWing","DeltaWing02","Wing","DeltaWing01","TailWing","Tailwing02","Tailwing03","Tailwing04"}){
             var source=Resources.FindObjectsOfTypeAll<Wing>().First(v=>v.name==name && !v.gameObject.scene.IsValid());
             var placed=Instantiate(source.gameObject,plane.transform);var filter=placed.GetComponent<MeshFilter>();
             var native=source.GetComponent<MeshFilter>().sharedMesh;
@@ -86,7 +86,8 @@ public sealed class WingRuntimeFixture : BaseUnityPlugin
             var method=AccessTools.Method(typeof(WingUpgrades),"TrySet");
             money.money=price*2f;var choose=new object[]{Enum.ToObject(flags,1),true,null};
             var start=System.Diagnostics.Stopwatch.StartNew();bool bought=(bool)method.Invoke(options,choose);start.Stop();
-            Check(bought && filter.sharedMesh!=defaultMesh,name+" purchases actual animated mesh: "+choose[2]);
+            var marker=placed.GetComponent<FlapMarker>();
+            Check(bought && marker.IsReady && (filter.sharedMesh!=defaultMesh || placed.GetComponentInChildren<WingVisual>(true).controlSurface),name+" purchases a working flap: "+choose[2]);
             Check(Math.Abs(building.price-price*1.25f)<.01f && Math.Abs(money.money-price*1.75f)<.01f,name+" charges exactly one wing upgrade");
             choose[1]=false;Check((bool)method.Invoke(options,choose) && filter.sharedMesh==defaultMesh && Math.Abs(money.money-price*2f)<.01f,name+" removal restores appearance and refunds purchase");
             report.Add("MEASURE "+name+" first purchase after prewarm: "+start.Elapsed.TotalMilliseconds.ToString("F2")+" ms");
@@ -109,5 +110,51 @@ public sealed class WingRuntimeFixture : BaseUnityPlugin
         Check(money.money==5000f && storage.GetPlaneCost()==beforeValue && storage.transform.childCount==2,"One native undo restores both wings and exact cash");
         Check(!storage.GetComponentsInChildren<WingUpgrades>().Any(s=>(byte)AccessTools.Field(typeof(WingUpgrades),"purchased").GetValue(s)!=0),"Undo removes both saved ownership flags");
         report.Add("MEASURE two-wing native undo: "+undoClock.Elapsed.TotalMilliseconds.ToString("F2")+" ms");
+        CheckFlightWork(plane,prefab);
+    }
+    static float UncachedTotal(PlaneContainer plane,Rigidbody body){
+        float total=0f;
+        foreach(var part in plane.planeParts){
+            var wing=part as Wing;
+            if(wing && wing.isActiveAndEnabled && wing.gameObject.activeInHierarchy && wing.rb==body)
+                total+=wing.GetWingArea()*Mathf.Max(0f,wing.liftForce);
+        }
+        return total;
+    }
+    void CheckFlightWork(PlaneContainer plane,Wing prefab){
+        var body=plane.gameObject.AddComponent<Rigidbody>();body.useGravity=false;
+        var detached=new GameObject("Detached wing group").AddComponent<Rigidbody>();
+        plane.planeParts=new List<PlanePart>();var wings=new List<Wing>();
+        for(int index=0;index<24;index++){
+            var wing=Instantiate(prefab.gameObject,plane.transform).GetComponent<Wing>();
+            wing.rb=index%5==0?detached:body;wing.liftForce=index+1;wings.Add(wing);plane.planeParts.Add(wing);
+        }
+        wings[4].enabled=false;wings[5].gameObject.SetActive(false);
+        var type=typeof(FlapsPlugin).Assembly.GetType("WingLoadTotals",true);
+        var total=(Func<PlaneContainer,Rigidbody,double,float>)Delegate.CreateDelegate(typeof(Func<PlaneContainer,Rigidbody,double,float>),AccessTools.Method(type,"ForBody"));
+        Check(total(plane,body,0)==UncachedTotal(plane,body) && total(plane,detached,0)==UncachedTotal(plane,detached),"Shared lift respects active wings and separate physics bodies");
+        wings[1].rb=detached;wings[2].enabled=false;wings[4].enabled=true;
+        Check(total(plane,body,1)==UncachedTotal(plane,body) && total(plane,detached,1)==UncachedTotal(plane,detached),"Next physics tick refreshes detached and disabled wings");
+        plane.planeParts.Remove(wings[7]);
+        float rebuilt=total(plane,body,1),expected=UncachedTotal(plane,body);
+        Check(Mathf.Approximately(rebuilt,expected),"Removing a wing refreshes the force budget within the tick");
+        var timer=System.Diagnostics.Stopwatch.StartNew();double oldSum=0,newSum=0;
+        for(int step=0;step<200;step++)foreach(var wing in wings)oldSum+=UncachedTotal(plane,wing.rb);
+        timer.Stop();double oldMs=timer.Elapsed.TotalMilliseconds;timer.Restart();
+        for(int step=0;step<200;step++)foreach(var wing in wings)newSum+=total(plane,wing.rb,step+2);
+        timer.Stop();Check(Math.Abs(oldSum-newSum)<=Math.Abs(oldSum)*1e-6,"Shared and per-wing totals agree within floating-point precision throughout benchmark");
+        report.Add("MEASURE 24 wing-body lookups x 200 ticks: old "+oldMs.ToString("F2")+" ms, shared "+timer.Elapsed.TotalMilliseconds.ToString("F2")+" ms");
+        var active=wings[3];var options=AccessTools.Method(typeof(WingUpgrades),"Ensure").Invoke(null,new object[]{active});
+        var restore=AccessTools.Method(typeof(WingUpgrades),"Restore");restore.Invoke(options,new object[]{100f,Enum.ToObject(restore.GetParameters()[1].ParameterType,1)});
+        var marker=active.GetComponent<FlapMarker>();Check(marker.IsReady,"Big Wing is ready for native accumulated-force check");
+        active.orientation=active.transform;body.linearVelocity=Vector3.forward*30;plane.liftMultiplier=plane.planeGravityMultiplier=plane.helicopterGravityMultiplier=1;
+        AccessTools.Field(typeof(FlapsPlugin),"<stage>k__BackingField").SetValue(null,0);
+        var apply=AccessTools.Method(typeof(FlapPhysics),"Postfix");
+        Func<float,Vector3> added=angle=>{Set(marker,"angle",angle);var before=body.GetAccumulatedForce();apply.Invoke(null,new object[]{active,plane,active.liftForce});return body.GetAccumulatedForce()-before;};
+        var full=added(30);var halfway=added(15);var closed=added(0);
+        Check(full.y>0 && halfway.y>0 && halfway.y<full.y && closed.sqrMagnitude<.00001f,"Big Wing lift decreases through retraction despite zero lever setting");
+        Check(full.z<0 && Math.Abs(halfway.z/full.z-.5f)<.001f,"Half deployment produces half trailing-flap drag");
+        AccessTools.Field(typeof(FlapsPlugin),"<stage>k__BackingField").SetValue(null,3);
+        Check(added(0).sqrMagnitude<.00001f,"Full lever request adds no Big Wing force while the panel is still stowed");
     }
 }

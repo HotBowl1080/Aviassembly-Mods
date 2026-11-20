@@ -2,6 +2,7 @@
  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><EnableDefaultCompileItems>false</EnableDefaultCompileItems><UseAppHost>false</UseAppHost></PropertyGroup>
  <PropertyGroup><GameDir Condition="'$(GameDir)' == ''">E:\SteamLibrary\steamapps\common\Aviassembly</GameDir></PropertyGroup>
  <ItemGroup>
+  <Compile Include="../../src/WingFlapIds.cs"/>
   <Compile Include="Program.cs"/><Compile Include="../../src/HingedWingProfile.cs"/><Compile Include="../../src/StraightWingGeometry.cs"/><Compile Include="../../src/StraightWingFlapMotion.cs"/><Compile Include="../../src/StraightWingAerodynamics.cs"/>
   <Reference Include="UnityEngine.CoreModule"><HintPath>$(GameDir)\Aviassembly_Data\Managed\UnityEngine.CoreModule.dll</HintPath></Reference>
  </ItemGroup>
