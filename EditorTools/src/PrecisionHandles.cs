@@ -19,12 +19,14 @@ namespace Aviassembly.EditorTools
         }
         private RecentAction recent;
         private bool handleOperation, handleDragging;
-        private Vector3 handleDirection, handleOrigin, handleRadial;
+        private Vector3 handleDirection, handleOrigin, handleRadial, handleGrabPoint;
         private Quaternion handleStartRotation;
         private Vector2 handleTangent;
         private float handleValue, handleLastAngle, handleAngle;
         private string toolHint;
         private BuildingPart toolTarget;
+        private BuildingPart lastMenuPart;
+        private bool lastMenuRotation;
         private Vector3 readoutNumbers;
 
         internal string ReadoutLine
@@ -42,16 +44,23 @@ namespace Aviassembly.EditorTools
                 else if (handleOperation) number = numeric && !inverse[0] ? numbers[0] : Display(handleValue);
                 else
                 {
-                    int count = Trackball || PlaneLock ? 2 : axis >= 0 || rotation ? 1 : 3;
+                    int count = ComponentCount;
                     var values = new string[count];
                     for (int i = 0; i < count; i++) values[i] = numeric && numbers[i].Length > 0 && !inverse[i] ? numbers[i] : Display(readoutNumbers[i]);
                     number = string.Join(", ", values);
                 }
-                return (rotation ? "Rotation" : "Direction") + " (" + axes + "): " + number + (rotation ? "\u00b0" : " m");
+                string space = Session.Active ? (handleOperation || Local ? "local" : "global") : recent != null ? "local" : "";
+                  if (Session.Active && rotation && !handleOperation && (Trackball || axis < 0))
+                  { axes = Trackball ? "horizontal, vertical" : "view axis"; space = ""; }
+                return (rotation ? "Rotate by" : Session.Duplicating ? "Move copy by" : "Move by") +
+                    " (" + axes + (space.Length > 0 ? ", " + space : "") + "): " + number + (rotation ? "\u00b0" : " m") +
+                    (snapHit.HasValue ? "  |  Snapped" : "");
             }
         }
 
-        internal bool HasReadout => Session.Active || recent != null || toolHint != null || host.ShapeEditor?.Readout.Length > 0;
+        internal bool HasShapeReadout => host.ShapeEditor?.Readout.Length > 0;
+        internal bool Editing => Session.Active || host.ShapeEditor?.Active == true;
+        internal bool HasReadout => Session.Active || recent != null || toolHint != null || HasShapeReadout;
         internal string ReadoutTitle => Session.Active
             ? (Rotating ? "Rotation" : "Movement") + (Axis >= 0 ? "  " + "XYZ"[Axis] + (handleOperation ? " handle" : Local ? " Local" : " Global") : Trackball ? "  Trackball" : "  View")
             : recent != null ? (recent.rotation ? "Rotation" : "Movement") + "  " + "XYZ"[recent.axis] + " handle" : toolHint;
@@ -63,9 +72,12 @@ namespace Aviassembly.EditorTools
         internal void NativeToolOpened(PartPlacer source, bool rotation)
         {
             if (source != placer || source.currentSelectedPart == null) return;
+            lastMenuPart = source.currentSelectedPart;
+            lastMenuRotation = rotation;
+            host.ShapeEditor?.ClearHint();
             Cancel(); toolTarget = source.currentSelectedPart; toolHint = rotation ? "Rotation" : "Movement";
         }
-        private void ClearRecentAction() { recent = null; toolHint = null; toolTarget = null; queuedText = ""; }
+        internal void ClearRecentAction() { recent = null; toolHint = null; toolTarget = null; queuedText = ""; }
         private void ValidateRecentAction()
         {
             if (!host.InEditor || placer == null || placer.currentMovingPart != null) { ClearRecentAction(); return; }
@@ -106,9 +118,14 @@ namespace Aviassembly.EditorTools
             if (closest is RotationGizmoElement ring)
             {
                 var gizmo = placer.rotationGizmo;
-                int axis = ring == gizmo.X ? 0 : ring == gizmo.Y ? 1 : ring == gizmo.Z ? 2 : -1;
-                var basis = axis == 0 ? Vector3.right : axis == 1 ? Vector3.up : Vector3.forward;
-                return axis >= 0 && BeginHandle(true, axis, gizmo.transform.rotation * basis, point);
+                if (ring != gizmo.X && ring != gizmo.Y && ring != gizmo.Z) return false;
+                // Native rings rotate around their own forward vector. The prefab slots
+                // do not necessarily name the matching axis of the selected part.
+                var normal = ring.transform.forward;
+                var local = placer.currentSelectedPart.transform.InverseTransformDirection(normal);
+                int axis = Mathf.Abs(local.x) >= Mathf.Abs(local.y) ? 0 : 1;
+                if (Mathf.Abs(local.z) > Mathf.Abs(local[axis])) axis = 2;
+                return BeginHandle(true, axis, normal * Mathf.Sign(local[axis]), point);
             }
             return false;
         }
@@ -117,6 +134,7 @@ namespace Aviassembly.EditorTools
             if (axis < 0 || axis > 2 || direction.sqrMagnitude < 0.5f || !Begin(rotation, true, true)) return false;
             handleOperation = true; handleDragging = true; Axis = axis;
             handleDirection = direction.normalized; handleOrigin = Session.StartPosition; handleStartRotation = Session.StartRotation;
+            handleGrabPoint = handleOrigin + Vector3.Project(hitPoint - handleOrigin, handleDirection);
             handleValue = handleLastAngle = handleAngle = 0;
             handleRadial = Vector3.ProjectOnPlane(PlanePoint(startMouse, handleDirection) - handleOrigin, handleDirection);
             if (handleRadial.sqrMagnitude < 0.0001f) handleRadial = Vector3.ProjectOnPlane(hitPoint - handleOrigin, handleDirection);
@@ -133,6 +151,7 @@ namespace Aviassembly.EditorTools
         {
             if (!Session.Active || !handleOperation || BuildingCamera.cam == null) return;
             ValidInput = true;
+            snapHit = null;
             float amount = handleValue;
             if (numeric)
             {
@@ -144,8 +163,8 @@ namespace Aviassembly.EditorTools
                 var mouse = Mouse.current != null ? Mouse.current.position.ReadValue() : startMouse;
                 bool fine = keyboard != null && keyboard.shiftKey.isPressed;
                 bool snap = keyboard != null && keyboard.ctrlKey.isPressed;
-                if (!Rotating) amount = AxisPoint(mouse, handleDirection) - AxisPoint(startMouse, handleDirection);
-            else if (Mathf.Abs(Vector3.Dot(handleDirection, ProjectionCamera.transform.forward)) > 0.15f)
+                if (!Rotating) amount = AxisDrag(mouse, handleDirection, handleGrabPoint);
+                else if (Mathf.Abs(Vector3.Dot(handleDirection, ProjectionCamera.transform.forward)) > 0.15f)
                 {
                     var radial = Vector3.ProjectOnPlane(PlanePoint(mouse, handleDirection) - handleOrigin, handleDirection);
                     if (radial.sqrMagnitude > 0.0001f)
@@ -157,7 +176,9 @@ namespace Aviassembly.EditorTools
                 }
                 else amount = Vector2.Dot(mouse - startMouse, handleTangent) * 0.5f;
                 if (fine) amount *= 0.1f;
-                if (snap) amount = TransformMath.Snap(amount, Rotating ? (fine ? 1 : 5) : (fine ? 0.1f : 1));
+                if (Rotating) amount = RotationSteps.Apply(amount, placer.rotationGizmo);
+                else if (snap) amount = TransformMath.Snap(amount, fine ? 0.1f : 1);
+                else if (!Rotating && !fine && TryHoverTarget(mouse, out var hit)) amount = HoverDistance(hit, handleDirection);
             }
             if (!ValidInput || !TransformMath.Finite(amount)) { ValidInput = false; return; }
             var position = Rotating ? handleOrigin : handleOrigin + handleDirection * amount;
@@ -177,6 +198,8 @@ namespace Aviassembly.EditorTools
             handleOperation = true; handleDragging = false; Axis = previous.axis;
             handleOrigin = previous.origin; handleStartRotation = previous.startRotation;
             handleDirection = previous.direction; handleValue = previous.value;
+            if (Session.IsGroup && previous.rotation)
+                handleStartRotation = Quaternion.AngleAxis(-previous.value, handleDirection) * Session.StartRotation;
             return true;
         }
         private void ClearHandleSelection()

@@ -12,14 +12,14 @@ PASS First focus visually eases halfway while preserving angle and distance actu
 PASS Native orbit uses the selected pivot after animation interruption actual=(7.0000, 2.0000, -4.0000) expected=(7.0000, 2.0000, -4.0000)
 PASS Second toggle changes state to Unfocused immediately
 PASS Unfocused uses the actual native aircraft center actual=(10.0000, 2.0000, -4.0000) expected=(10.0000, 2.0000, -4.0000)
-PASS Unfocused releases the game's UpdateOrigin after transition
+PASS Unfocused prevents per-frame native recentering after transition
 PASS Unfocused returns to the default orbit center actual=(10.0000, 2.0000, -4.0000) expected=(10.0000, 2.0000, -4.0000)
 PASS Reset retains zoom instead of applying old close framing
-PASS Current selection cannot immediately reactivate focus after reset
+PASS Current selection cannot immediately reactivate focus after toggling off
 PASS Selecting another part while Unfocused leaves camera in place actual=(-4.6700, 5.1187, -3.7439) expected=(-4.6700, 5.1187, -3.7439)
 PASS Selection preserves Unfocused mode
 PASS Toggle after changing selection uses the new part pivot actual=(-6.0000, 5.0000, 2.0000) expected=(-6.0000, 5.0000, 2.0000)
-PASS Focused selection follows the newly selected part actual=(7.0000, 2.0000, -4.0000) expected=(7.0000, 2.0000, -4.0000)
+PASS Focused click centers the selected placed part actual=(7.0000, 2.0000, -4.0000) expected=(7.0000, 2.0000, -4.0000)
 PASS Selection preserves Focused mode
 PASS Changing focused selection retains zoom
 PASS Picking up and moving a part does not retarget focused camera actual=(10.0000, 2.0000, -4.0000) expected=(10.0000, 2.0000, -4.0000)
@@ -42,22 +42,34 @@ PASS UI button toggles back to Focused
 PASS Mode button hides in menus
 PASS Mode button returns after closing menu
 PASS Deleting a target retains Focused mode for the next selection
-PASS Reset works even after the focused part is deleted
+PASS Toggle works even after the focused part is deleted
 PASS F enters Focused mode without a selected target
 PASS New selection after deletion preserves Unfocused mode
 PASS Clicking the same part while Unfocused stays Unfocused
-PASS Unfocused native camera follows later aircraft center changes
-PASS Entering flight releases editor camera ownership
-PASS Aircraft reset releases orbit ownership
+PASS Unfocused orbit stays put when aircraft bounds change actual=(10.0000, 2.0000, -4.0000) expected=(10.0000, 2.0000, -4.0000)
+PASS Unfocused accepts the game's explicit reframe after loading an aircraft
+PASS Entering flight releases the editor camera and remembers the mode
+PASS Reentering the editor remembers Focused mode
+PASS Aircraft reset preserves Focused mode and keeps its orbit
 PASS Placement: moving a new part does not enter Focused mode
-PASS Placement: moving a new part leaves orbit origin unchanged actual=(11.0000, 2.0000, -4.0000) expected=(11.0000, 2.0000, -4.0000)
-PASS Placement: moving a new part leaves rendered camera unchanged actual=(-4.6700, 5.1187, -3.7439) expected=(-4.6700, 5.1187, -3.7439)
-PASS Placement: real native mouse projection stays stable while dragging actual=(1.1876, 3.5819, -0.9218) expected=(1.1876, 3.5819, -0.9218)
+PASS Placement: moving a new part leaves orbit origin unchanged actual=(14.0000, 2.0000, -4.0000) expected=(14.0000, 2.0000, -4.0000)
+PASS Placement: moving a new part leaves rendered camera unchanged actual=(-0.6700, 5.1187, -3.7439) expected=(-0.6700, 5.1187, -3.7439)
+PASS Placement: real native mouse projection stays stable while dragging actual=(5.1876, 3.5820, -0.9218) expected=(5.1876, 3.5820, -0.9218)
+PASS Placement: native recenter cannot follow a dragged part while Unfocused actual=(14.0000, 2.0000, -4.0000) expected=(14.0000, 2.0000, -4.0000)
+PASS Placement: conditional completed-placement focus hook is installed
+PASS Release: cancelled named selections feature is excluded
 PASS Placement: F override is not reactivated by continued dragging
-PASS Placement: completion focuses a new part and releases frozen projection
-PASS Placement: new completed placement becomes orbit target actual=(0.0000, 1.0000, 3.0000) expected=(0.0000, 1.0000, 3.0000)
-PASS Placement: moving an existing part is excluded from automatic focus
-PASS Placement: existing-part movement does not move the focused pivot actual=(0.0000, 1.0000, 3.0000) expected=(0.0000, 1.0000, 3.0000)
+PASS Placement: dropping a new part stays Unfocused and releases frozen projection
+PASS Placement: dropping a new part leaves the Unfocused orbit fixed through native updates actual=(14.0000, 2.0000, -4.0000) expected=(14.0000, 2.0000, -4.0000)
+PASS Focused new-part drag does not follow the moving part actual=(14.0000, 2.0000, -4.0000) expected=(14.0000, 2.0000, -4.0000)
+PASS Focused new-part drop centers its final placement even after selection clears actual=(7.0000, 1.0000, 3.0000) expected=(7.0000, 1.0000, 3.0000)
+PASS Placement: dragging preserves manually selected Focused mode
+PASS Placement: moving an existing part preserves the focused pivot on release actual=(7.0000, 1.0000, 3.0000) expected=(7.0000, 1.0000, 3.0000)
+PASS Placement: moving an existing part preserves the focused view on release actual=(-7.6700, 4.1187, 3.2561) expected=(-7.6700, 4.1187, 3.2561)
+PASS Placement: a simple click still centers the part in Focused mode actual=(7.0000, 2.0000, 3.0000) expected=(7.0000, 2.0000, 3.0000)
+PASS Placement: an explicit focus toggle keeps the projection steady until release actual=(-7.6700, 4.1187, 3.2561) expected=(-7.6700, 4.1187, 3.2561)
+PASS Placement: F Unfocused override wins even after a Focused placement begins
+PASS Placement: the explicit Unfocused reframe begins after the drag actual=(14.0000, 2.0000, -4.0000) expected=(14.0000, 2.0000, -4.0000)
 PASS Placement: F and UI can cycle modes with no selected part or active tool
 PASS Precision: native transaction begins for placed part
 PASS Precision: baseline captured once in native history
@@ -95,27 +107,32 @@ PASS Precision: rejects incomplete or nonfinite input 1..2
 PASS Precision: rejects incomplete or nonfinite input 1e999
 PASS Precision: accepts small signed decimals
 PASS Precision: G-style modal move begins
-PASS Precision: G Z 0.35 moves vertically by exact amount
+PASS Precision: G Y 0.35 moves vertically by exact amount
 PASS Precision: repeating axis switches to Local
 PASS Precision: third axis press removes constraint
 PASS Precision: R-style modal rotation begins
-PASS Precision: R Z -33.5 uses Blender rotation convention
+PASS Precision: R Y -33.5 uses native rotation convention
 PASS Precision: minus toggles the whole numeric value
 PASS Precision: slash numeric reciprocal works
 PASS Precision: partial numeric entry cannot commit
-PASS Precision: Shift Z excludes the vertical axis
+PASS Precision: Shift Y excludes the vertical axis
 PASS Precision: selection change cancels preview before native selection mutation
 PASS Precision: rotation-locked parts reject rotation mode
 PASS Precision: contextual readout constructed
 PASS Precision: readout has no absolute-coordinate fields
 PASS Precision: idle starts in normal game mode without readout
 PASS Precision: readout does not intercept clicks
+PASS Audit: Backspace in a blank component preserves the number on another axis
+PASS Audit: a hidden unfinished component cannot invalidate a single-axis move
+PASS Audit: exiting trackball returns numeric input to the displayed angle
 PASS Precision: mouse projection moves on selected axis
 PASS Precision: Shift mouse motion uses tenth precision
 PASS Precision: Ctrl mouse motion snaps to whole units
 PASS Precision: Ctrl Shift uses fine snapping
 PASS Precision: unconstrained mouse move follows view plane
-PASS Precision: middle mouse chooses projected vertical Z axis
+PASS Precision: middle mouse chooses projected vertical Y axis
+PASS Precision: projected axis drag matches the mouse at an oblique angle
+PASS Precision: almost end-on axis motion stays bounded without overshooting the cursor
 PASS Precision: repeated X numeric input uses original local axis
 PASS Precision: plane-lock numbers map to both included axes
 PASS Precision: mouse rotation measures angle around projected pivot
@@ -125,6 +142,70 @@ PASS Precision: native mirror follows translation
 PASS Precision: moving preserves existing mirror rotation
 PASS Precision: rotating uses native mirror orientation
 PASS Precision: cancel restores mirror position and rotation
+PASS Advanced snap: axis rotation follows the button at 1 (Rotate by (Z, global): -37°)
+PASS Advanced snap: dragged ring follows the button at 1 (Rotate by (Z, local): -37°)
+PASS Advanced snap: trackball follows the button at 1
+PASS Angle button: displayed step and applied rotation agree at 1
+PASS Advanced snap: axis rotation follows the button at 5 (Rotate by (Z, global): -35°)
+PASS Advanced snap: dragged ring follows the button at 5 (Rotate by (Z, local): -35°)
+PASS Advanced snap: trackball follows the button at 5
+PASS Angle button: displayed step and applied rotation agree at 5
+PASS Advanced snap: axis rotation follows the button at 15 (Rotate by (Z, global): -30°)
+PASS Advanced snap: dragged ring follows the button at 15 (Rotate by (Z, local): -30°)
+PASS Advanced snap: trackball follows the button at 15
+PASS Angle button: displayed step and applied rotation agree at 15
+PASS Advanced snap: axis rotation follows the button at 30 (Rotate by (Z, global): -30°)
+PASS Advanced snap: dragged ring follows the button at 30 (Rotate by (Z, local): -30°)
+PASS Advanced snap: trackball follows the button at 30
+PASS Angle button: displayed step and applied rotation agree at 30
+PASS Advanced snap: axis rotation follows the button at 45 (Rotate by (Z, global): -45°)
+PASS Advanced snap: dragged ring follows the button at 45 (Rotate by (Z, local): -45°)
+PASS Advanced snap: trackball follows the button at 45
+PASS Angle button: displayed step and applied rotation agree at 45
+PASS Advanced snap: axis rotation follows the button at 60 (Rotate by (Z, global): -60°)
+PASS Advanced snap: dragged ring follows the button at 60 (Rotate by (Z, local): -60°)
+PASS Advanced snap: trackball follows the button at 60
+PASS Angle button: displayed step and applied rotation agree at 60
+PASS Advanced snap: axis rotation follows the button at 75 (Rotate by (Z, global): 0°)
+PASS Advanced snap: dragged ring follows the button at 75 (Rotate by (Z, local): 0°)
+PASS Advanced snap: trackball follows the button at 75
+PASS Angle button: displayed step and applied rotation agree at 75
+PASS Advanced snap: axis rotation follows the button at 90 (Rotate by (Z, global): 0°)
+PASS Advanced snap: dragged ring follows the button at 90 (Rotate by (Z, local): 0°)
+PASS Advanced snap: trackball follows the button at 90
+PASS Angle button: displayed step and applied rotation agree at 90
+PASS Advanced snap: axis rotation follows the button at 0 (Rotate by (Z, global): -37.40002°)
+PASS Advanced snap: dragged ring follows the button at 0 (Rotate by (Z, local): -37.40063°)
+PASS Advanced snap: trackball follows the button at 0
+PASS Angle button: displayed step and applied rotation agree at 0
+PASS Advanced snap: axis rotation follows the button at 1 (Rotate by (Z, global): -37°)
+PASS Advanced snap: dragged ring follows the button at 1 (Rotate by (Z, local): -37°)
+PASS Advanced snap: trackball follows the button at 1
+PASS Angle button: displayed step and applied rotation agree at 1
+PASS Menu shortcut: X starts a world-axis edit directly in Move
+PASS Menu shortcut: typed value affects only X in Move
+PASS Menu shortcut: Backspace erases the last digit and keeps the active part
+PASS Menu shortcut: Y starts a world-axis edit directly in Move
+PASS Menu shortcut: typed value affects only Y in Move
+PASS Menu shortcut: Backspace erases the last digit and keeps the active part
+PASS Menu shortcut: Z starts a world-axis edit directly in Move
+PASS Menu shortcut: typed value affects only Z in Move
+PASS Menu shortcut: Backspace erases the last digit and keeps the active part
+PASS Menu shortcut: X starts a world-axis edit directly in Rotate
+PASS Menu shortcut: typed value affects only X in Rotate
+PASS Menu shortcut: Backspace erases the last digit and keeps the active part
+PASS Menu shortcut: Y starts a world-axis edit directly in Rotate
+PASS Menu shortcut: typed value affects only Y in Rotate
+PASS Menu shortcut: Backspace erases the last digit and keeps the active part
+PASS Menu shortcut: Z starts a world-axis edit directly in Rotate
+PASS Menu shortcut: typed value affects only Z in Rotate
+PASS Menu shortcut: Backspace erases the last digit and keeps the active part
+PASS Axis consistency: keyboard local and native handle match for move 0
+PASS Axis consistency: keyboard local and native handle match for rotation 0
+PASS Axis consistency: keyboard local and native handle match for move 1
+PASS Axis consistency: keyboard local and native handle match for rotation 1
+PASS Axis consistency: keyboard local and native handle match for move 2
+PASS Axis consistency: keyboard local and native handle match for rotation 2
 PASS Handles: clicking actual arrow collider starts precision without G
 PASS Handles: arrow readout shows only movement and clicked axis
 PASS Handles: mouse movement is precise by default without snap
@@ -147,6 +228,18 @@ PASS Handles: typing during ring drag replaces mouse angle exactly
 PASS Handles: typed rotation waits for confirmation after release
 PASS Handles: typed angle after commit still uses original operation start
 PASS Handles: Escape restores committed rotation when readjusting
+PASS Handles: native ring picked on rotated part X
+PASS Handles: circular mouse drag follows native ring plane X
+PASS Handles: native ring readout and typed angle agree with the part's local axis X
+PASS Handles: native ring picked on rotated part Y
+PASS Handles: circular mouse drag follows native ring plane Y
+PASS Handles: native ring readout and typed angle agree with the part's local axis Y
+PASS Handles: native ring picked on rotated part Z
+PASS Handles: circular mouse drag follows native ring plane Z
+PASS Handles: native ring readout and typed angle agree with the part's local axis Z
+PASS Audit: native movement arrow matches its local axis and entered distance X local=(1.00, 0.00, 0.00)
+PASS Audit: native movement arrow matches its local axis and entered distance Y local=(0.00, 1.00, 0.00)
+PASS Audit: native movement arrow matches its local axis and entered distance Z local=(0.00, 0.00, 1.00)
 PASS Handles: native Rotate button only shows rotation hint without capturing input
 PASS Handles: native Move button replaces rotation hint with movement hint
 PASS Handles: contextual readout contains no old panel fields or buttons
@@ -162,10 +255,33 @@ PASS Handles: unrelated transform invalidates remembered operation
 PASS Handles: reselecting a part clears stale numeric adjustment
 PASS Shortcuts: K opens menu and blocks world clicks
 PASS Shortcuts: open menu blocks native shortcuts and precision editing
-PASS Shortcuts: complete shortcut text fits native canvas
+PASS Shortcuts: the card is centered on the native canvas
+PASS Shortcuts: labeled columns fit the card and list duplicate, delete and transform controls
 PASS Shortcuts: second K closes and releases input
 PASS Shortcuts: Escape closes and restores editor interaction
 PASS Shortcuts: native modal prevents opening help
+PASS Shortcuts: Hotkeys button is available in the editor toolbar
+PASS Shortcuts: clicking Hotkeys opens the same input-blocking menu
+PASS Shortcuts: clicking Close returns to the editor
+PASS Clipboard: pasting without a copied part explains how to copy and leaves the aircraft alone
+PASS Clipboard: Ctrl+C captures the active part
+PASS Audit: paste creates a separate part with the copied settings
+PASS Audit: cancelling an unplaced paste cannot pick an existing part as its mirror
+PASS Audit: a previously pasted part returns to native editing after placement
+PASS Audit: native paste cancellation preserves the existing opposite part
+PASS Duplicate: Ctrl+D opens advanced move with a private copy
+PASS Duplicate: preview begins in place actual=(108.0000, 3.0000, -2.0000) expected=(108.0000, 3.0000, -2.0000)
+PASS Duplicate: preview preserves part rotation and saved settings without replacing the clipboard
+PASS Duplicate: preview stays outside saves, undo and the budget
+PASS Part shortcuts: X constrains the axis during advanced move
+PASS Duplicate: Escape cancels the preview and keeps the source selected
+PASS Duplicate: confirming commits exactly one selected part and charges its price
+PASS Duplicate: exact movement applies to the copy actual=(111.0000, 3.0000, -2.0000) expected=(111.0000, 3.0000, -2.0000)
+PASS Duplicate: moving the copy leaves the source in place actual=(108.0000, 3.0000, -2.0000) expected=(108.0000, 3.0000, -2.0000)
+PASS Duplicate: confirmation creates one native undo snapshot
+PASS Duplicate: unaffordable confirmation leaves the aircraft intact
+PASS Part shortcuts: idle X keeps the active part
+PASS Part shortcuts: native deletion removes the active part
 PASS Prop: native-radius sweep detects an intersecting aircraft collider count=1 probe=Center: (100.30, 100.00, 100.00), Extents: (0.00, 0.00, 0.00) convex=True obstacle=Center: (100.30, 101.00, 100.00), Extents: (0.50, 0.50, 0.50) mesh=Center: (0.00, 0.00, 0.00), Extents: (0.01, 2.00, 2.00) pos=(100.30, 100.00, 100.00)
 PASS Prop: query collider disabled between checks and outside aircraft hierarchy
 PASS Prop: repeated queries retain the same obstruction
@@ -182,14 +298,24 @@ PASS X-ray: hidden mesh receives ghost draw commands by default
 PASS X-ray: ghost preserves original materials, hidden renderer state and physics
 PASS Prop: hidden parts still obstruct the sweep
 PASS X-ray: ghost remains excluded from editor picking
-PASS X-ray: Off fully hides visuals without revealing parts
-PASS X-ray: On restores ghost view
+PASS X-ray: hidden parts always retain ghost view
+PASS X-ray: cannot be disabled by a toggle or setter
 PASS X-ray: show all removes ghosts and restores original appearance
 PASS Prop: gap queries support non-convex aircraft mesh colliders
 PASS Prop: sweep detects non-convex mesh obstruction
 PASS Prop: rotated mirrored and resized sweep remains aligned
 PASS Prop: toolbar disables inspection
 PASS Prop: toolbar re-enables inspection
+PASS Prop menu: global toggle scope is explicit
+PASS Prop menu: control belongs to the native selected-part toolbar
+PASS Prop menu: visible and enabled for selected propeller
+PASS Prop menu: full pointer press blocks world selection and remains enabled
+PASS Prop menu: native visibility heartbeat survives pointer press
+PASS Prop menu: patched native Update refreshes visibility before native animation checks
+PASS Prop menu: pointer release toggles inspection off
+PASS Prop menu: same control restores inspection
+PASS Prop menu: control disappears for ordinary parts
+PASS Prop menu: control disappears when selection clears
 PASS Inspection: flight restores hidden visuals and removes both overlays
 PASS Prop: installed Building assets contain supported native propeller definitions (6)
 PASS Combined: production Plugin owns both modules
@@ -229,29 +355,63 @@ PASS Pointer: Hide completes a full press and release
 PASS Pointer: Show All stays enabled while held down
 PASS Pointer: Show All press blocks aircraft picking
 PASS Pointer: Show All completes a full press and release
-PASS Pointer: X-ray stays enabled while held down
-PASS Pointer: X-ray press blocks aircraft picking
-PASS Pointer: X-ray toggle completes full press and release
-PASS Pointer: Prop Check stays enabled while held down
-PASS Pointer: Prop Check press blocks aircraft picking
-PASS Pointer: Prop Check toggle completes full press and release
+PASS UI: permanent X-ray has no button
 PASS Combined: former H shortcut has no action
 PASS Combined: final I restores original renderer state
 PASS Combined layout: all four native bottom controls forced visible
 PASS Combined layout: native CG and Drag controls located CG=(x:1250.59, y:14.26, width:97.24, height:38.69) Drag=(x:1362.09, y:14.26, width:146.43, height:38.69)
 PASS Combined layout: every toolbar control inside screen 1904x984; maxX=892.73
-PASS Combined layout: toolbar clears right CG/Drag controls; maxX=892.73 CG=(x:1250.59, y:14.26, width:97.24, height:38.69) Drag=(x:1362.09, y:14.26, width:146.43, height:38.69) Snapping=(x:14.25, y:13.99, width:213.87, height:39.21) Undo=(x:242.38, y:13.99, width:41.28, height:39.21) Mirror=(x:297.91, y:13.99, width:156.43, height:39.21) RotationSnap=(x:468.60, y:13.99, width:224.51, height:39.21) EditorTools Hide Part=(x:14.25, y:62.28, width:128.32, height:39.21) EditorTools Show Parts=(x:156.83, y:62.28, width:178.23, height:39.21) EditorTools X-ray=(x:349.31, y:62.28, width:117.63, height:39.21) EditorTools Prop Check=(x:481.20, y:62.28, width:149.71, height:39.21) EditorTools Camera Mode=(x:707.37, y:13.99, width:185.35, height:39.21)
+PASS Combined layout: toolbar clears right CG/Drag controls; maxX=892.73 CG=(x:1250.59, y:14.26, width:97.24, height:38.69) Drag=(x:1362.09, y:14.26, width:146.43, height:38.69) Snapping=(x:14.25, y:13.99, width:213.87, height:39.21) Undo=(x:242.38, y:13.99, width:41.28, height:39.21) Mirror=(x:297.91, y:13.99, width:156.43, height:39.21) RotationSnap=(x:468.60, y:13.99, width:224.51, height:39.21) EditorTools Hide Part=(x:149.70, y:62.28, width:128.32, height:39.21) EditorTools Show Parts=(x:292.28, y:62.28, width:178.23, height:39.21) EditorTools Camera Mode=(x:707.37, y:13.99, width:185.35, height:39.21)
 PASS Combined layout: all native and custom toolbar controls avoid each other
 PASS Group: Shift-toggle semantics add active part without picking it up
 PASS Group: toggling selected part removes it
+PASS Group focus: adding a part leaves camera pivot unchanged
+PASS Group focus: replacing a group leaves camera pivot unchanged
+PASS Group focus: explicitly enabling focus targets selection center
+PASS Group: a short count appears on the right side clear of the parts palette
 PASS Group: actual transform session captures multiple selected parts
+PASS Audit: translating a group preserves each part's saved rotation offset
 PASS Group: exact movement applies once to every selected root
 PASS Group: selected parent and child do not double-transform
 PASS Group: saves exclude all preview poses
 PASS Group: rotation uses shared median pivot
 PASS Group: cancel restores all parts and attachment graph
+PASS Audit: a locked active part does not block rotation of an unlocked group member
+PASS Audit: grouped ring accepts a replacement angle after release
+PASS Audit: replacing a grouped angle preserves the locked orientation and uses the total angle
 PASS Group: commit preserves whole group movement
 PASS Group: hidden parts excluded from selection
+PASS Magnet: opens options on the stock button and blocks clicks through the popup
+PASS Magnet: selecting Edge closes the popup
+PASS Snap: loaded aircraft assets have 144 readable meshes out of 144
+PASS Snap: vertical arrow starts a mouse drag
+PASS Snap: dragging over the other part's upper edge aligns the underside on Y with X and Z preserved
+PASS Snap: leaving the edge immediately restores ordinary arrow dragging
+PASS Snap: releasing over an edge commits without a source click or shortcut
+PASS Snap: V does not enter a separate picking mode
+PASS Snap: numeric movement wins over the hovered geometry
+PASS Snap: cancel restores the initial pose
+PASS Magnet: opens options on the stock button and blocks clicks through the popup
+PASS Magnet: selecting Center closes the popup
+PASS Snap: vertical arrow starts a mouse drag
+PASS Magnet: Center aligns an offset mesh's visible midpoint to the target height
+PASS Magnet: unconstrained move aligns all three coordinates of the visible center
+PASS Magnet: opens options on the stock button and blocks clicks through the popup
+PASS Magnet: selecting Edge closes the popup
+PASS Snap: vertical arrow starts a mouse drag
+PASS Magnet: Edge aligns the underside of the same offset mesh
+PASS Magnet: opens options on the stock button and blocks clicks through the popup
+PASS Magnet: selecting Off closes the popup
+PASS Snap: vertical arrow starts a mouse drag
+PASS Magnet: Off disables native and move snapping
+PASS Magnet: opens options on the stock button and blocks clicks through the popup
+PASS Magnet: selecting Edge closes the popup
+PASS Magnet: clicking outside preserves the setting and releases editor input
+PASS Snap: vertical arrow starts a mouse drag
+PASS Snap: hidden parts cannot attract the move arrow
+PASS Group focus: ordinary click exits group and centers clicked part
+PASS Group: ordinary selection uses the native single-part highlight
+PASS Group: the first Shift-click draws the selection highlight immediately
 PASS Group: box selects projected origins inside rectangle
 PASS Group: Ctrl-box subtracts from selection
 PASS Group: A input selects visible placed parts
@@ -263,8 +423,29 @@ PASS Group: G input starts group transform
 PASS Group: G X typed offset routes to all selected roots
 PASS Shape: unsupported parts rejected instead of applying unsaved transform scale
 PASS Shape: installed game exposes native procedural fuselage asset
+PASS Audit: scaling child-first selection applies spacing exactly once
+PASS Audit: scaling uses the same group center for the parent
+PASS Audit: cancelling child-first scale restores placement and attachment
+PASS Audit: native lookup identifies the matching procedural mirror
+PASS Audit: scaling one fuselage resizes its automatic mirror in place
 PASS Shape: native width handle collider starts precision input
 PASS Shape: typed native handle value updates selected meshes
+PASS Shape: dragging beyond the minimum holds the native width limit
+PASS Shape: minimum width keeps the camera fixed in Unfocused mode
+PASS Shape: dragging beyond the minimum holds the native width limit
+PASS Shape: minimum width keeps the camera fixed in Focused mode
+PASS Shape drag: diagonal handle follows screen projection at camera roll 0
+PASS Shape drag: changing focus with stationary mouse preserves size at camera roll 0
+PASS Shape drag: perpendicular motion leaves value unchanged at camera roll 0
+PASS Shape drag: diagonal handle follows screen projection at camera roll 45
+PASS Shape drag: changing focus with stationary mouse preserves size at camera roll 45
+PASS Shape drag: perpendicular motion leaves value unchanged at camera roll 45
+PASS Shape drag: end-on handle explains vertical fallback
+PASS Shape focus: toggle works without changing or committing numeric preview
+PASS Shape focus: camera button stays enabled during shape edit
+PASS Shape focus: pressing camera button does not confirm edit
+PASS Shape focus: button returns camera mode and preserves preview
+PASS Shape readout: dimensions explicitly show final value
 PASS Shape: exact width starts and previews without native snapping
 PASS Shape: typed width reaches both selected native procedural meshes
 PASS Shape: preview leaves committed settings and money unchanged
@@ -272,11 +453,13 @@ PASS Shape: native save bytes exclude geometry and price previews
 PASS Shape: geometry preview resumes after save
 PASS Shape: cancel restores both meshes and exact native saves
 PASS Shape: exact corner roundness changes only chosen end and corner
-PASS Shape: invalid roundness cannot silently exceed native limit
+PASS Shape: typed roundness over the limit shows the valid range
+PASS Shape: saving during invalid input restores the last valid preview and keeps it uncommitted
 PASS Shape: native geometry commit succeeds for multiple parts
 PASS Shape: committed corners persist in native applied state
 PASS Shape: native idle gizmo update preserves exact dimensions and corner values
 PASS Shape: hollowness supports exact percentages
+PASS Shape readout: scale explicitly shows multiplier
 PASS Shape: S scaling edits saved procedural geometry rather than Transform.localScale
 PASS Shape: S input starts native geometry scaling
 PASS Shape: numeric input routes into active scale preview
@@ -284,4 +467,94 @@ PASS Shape: Escape input cancels typed scaling
 PASS Shape: unaffordable edits stay uncommitted
 PASS Shape: cancelled unaffordable edit does not charge money
 PASS Shape: changing selection cancels active geometry preview
-RESULT 286 passed, 0 failed
+PASS Shape: roundness can edit a saved part with a narrow opposite end without changing that end
+PASS Shape: loaded scene supplies the native end handles
+PASS Shape: the native roundness handle has a raycast collider
+PASS Shape: native hover can receive the press before the mod
+PASS Shape: mod captures the stock roundness handle and releases the stock drag
+PASS Shape: a click without a drag preserves mixed corners
+PASS Shape: the native roundness drag moves all corners by a common delta and caps each corner
+PASS Shape: dragging past the roundness limit displays the capped preview
+PASS Shape: reversing an overshot roundness drag changes the preview immediately
+PASS Shape: releasing an overshot drag commits and closes the edit
+PASS Shape: a 100 pixel individual corner drag at 1080p changes only that corner by 38 points
+PASS Shape: a 100 pixel hollowness drag at 1080p changes 45 percentage points
+PASS Shape: engaging Shift during a drag leaves the preview where it is
+PASS Shape: Shift reduces subsequent drag motion to one tenth
+PASS Shape: releasing Shift during a drag leaves the preview where it is
+PASS Shape: a fast hollowness drag commits at the 90 percent game limit
+PASS Shape: the actual end handles track an offset preview
+PASS Shape: cancelling puts the native handles back with the fuselage
+PASS Shape: pointer picks the native length handle on end 1 from (6.00, 0.00, 0.00)
+PASS Shape: grabbed length handle follows pointer within a pixel on end 1 at 0.25 m from (6.00, 0.00, 0.00)
+PASS Shape: grabbed length handle follows pointer within a pixel on end 1 at 0.85 m from (6.00, 0.00, 0.00)
+PASS Shape: grabbed length handle follows pointer within a pixel on end 1 at 0.15 m from (6.00, 0.00, 0.00)
+PASS Shape: grabbed length handle follows pointer within a pixel on end 1 at -0.15 m from (6.00, 0.00, 0.00)
+PASS Shape: pointer picks the native length handle on end 1 from (3.00, 2.00, 5.00)
+PASS Shape: grabbed length handle follows pointer within a pixel on end 1 at 0.25 m from (3.00, 2.00, 5.00)
+PASS Shape: grabbed length handle follows pointer within a pixel on end 1 at 0.85 m from (3.00, 2.00, 5.00)
+PASS Shape: grabbed length handle follows pointer within a pixel on end 1 at 0.15 m from (3.00, 2.00, 5.00)
+PASS Shape: grabbed length handle follows pointer within a pixel on end 1 at -0.15 m from (3.00, 2.00, 5.00)
+PASS Shape: pointer picks the native length handle on end 1 from (-9.00, 4.00, -7.00)
+PASS Shape: grabbed length handle follows pointer within a pixel on end 1 at 0.25 m from (-9.00, 4.00, -7.00)
+PASS Shape: grabbed length handle follows pointer within a pixel on end 1 at 0.85 m from (-9.00, 4.00, -7.00)
+PASS Shape: grabbed length handle follows pointer within a pixel on end 1 at 0.15 m from (-9.00, 4.00, -7.00)
+PASS Shape: grabbed length handle follows pointer within a pixel on end 1 at -0.15 m from (-9.00, 4.00, -7.00)
+PASS Shape: pointer picks the native length handle on end 2 from (6.00, 0.00, 0.00)
+PASS Shape: grabbed length handle follows pointer within a pixel on end 2 at 0.25 m from (6.00, 0.00, 0.00)
+PASS Shape: grabbed length handle follows pointer within a pixel on end 2 at 0.85 m from (6.00, 0.00, 0.00)
+PASS Shape: grabbed length handle follows pointer within a pixel on end 2 at 0.15 m from (6.00, 0.00, 0.00)
+PASS Shape: grabbed length handle follows pointer within a pixel on end 2 at -0.15 m from (6.00, 0.00, 0.00)
+PASS Shape: pointer picks the native length handle on end 2 from (3.00, 2.00, 5.00)
+PASS Shape: grabbed length handle follows pointer within a pixel on end 2 at 0.25 m from (3.00, 2.00, 5.00)
+PASS Shape: grabbed length handle follows pointer within a pixel on end 2 at 0.85 m from (3.00, 2.00, 5.00)
+PASS Shape: grabbed length handle follows pointer within a pixel on end 2 at 0.15 m from (3.00, 2.00, 5.00)
+PASS Shape: grabbed length handle follows pointer within a pixel on end 2 at -0.15 m from (3.00, 2.00, 5.00)
+PASS Shape: pointer picks the native length handle on end 2 from (-9.00, 4.00, -7.00)
+PASS Shape: grabbed length handle follows pointer within a pixel on end 2 at 0.25 m from (-9.00, 4.00, -7.00)
+PASS Shape: grabbed length handle follows pointer within a pixel on end 2 at 0.85 m from (-9.00, 4.00, -7.00)
+PASS Shape: grabbed length handle follows pointer within a pixel on end 2 at 0.15 m from (-9.00, 4.00, -7.00)
+PASS Shape: grabbed length handle follows pointer within a pixel on end 2 at -0.15 m from (-9.00, 4.00, -7.00)
+PASS Audit: copy feedback is visible after a completed shape edit
+PASS Audit: retyping a committed length offset leaves the endpoint at the displayed position
+PASS Audit: confirming the same length again preserves native geometry and money
+PASS Audit: a second length readjustment adds only the difference between the entered offsets
+PASS Audit: opening rotation clears the old shape readout and numeric target
+PASS Shape: native hover resizing works and keeps unrelated exact corners on an unselected fuselage
+PASS Resize: committing the native hover handle centers the edited part without a selection click
+PASS Resize: committing the native hover handle preserves the unfocused pivot
+PASS Resize: confirmed group scale focuses the updated group center
+PASS Audit: attached child ends commit where the scale preview showed them
+PASS Audit: same numeric offset on end 2 preserves the saved group and budget for OffsetX
+PASS Audit: same numeric offset on end 2 preserves the saved group and budget for OffsetY
+PASS Audit: same numeric offset on end 2 preserves the saved group and budget for Length
+PASS Native placement completes and preserves Unfocused mode
+PASS Native placement uses the existing camera pivot actual=(67.1727, -0.9656, 1.6899) expected=(67.1727, -0.9656, 1.6899)
+PASS Unfocused native placement leaves the rendered view in place actual=(52.5027, 2.1530, 1.9459) expected=(52.5027, 2.1530, 1.9459)
+PASS Native placement completes and preserves Focused mode
+PASS Native placement uses the placed part pivot actual=(-47.0000, 8.0000, 11.0000) expected=(-47.0000, 8.0000, 11.0000)
+PASS Native drag: the grab point follows the mouse with fixed depth actual=(40.1584, 0.9569, 2.0466) expected=(40.1584, 0.9569, 2.0466)
+PASS Native drag: ignores a distant endpoint along the mouse ray
+PASS Native drag: nearby endpoints still snap
+PASS Mirror drag: closer points on the moving mirror and its child cannot steal the fixed attachment
+PASS Mirror drag: the reflected copy accepts a fixed attachment while excluding itself
+PASS Mirror drag: the reflected cursor ray reaches a fixed surface behind a moving child
+PASS Mirror drag: a moving child alone cannot become the reflected part's parent
+PASS Mirror drag: picking up a centerline part cannot claim a nearby placed part as its reflection
+PASS Native drag: rendered view stays put in Unfocused mode actual=(31.4369, 3.3695, 0.2181) expected=(31.4369, 3.3695, 0.2181)
+PASS Native drag: an active edit preserves camera angle and zoom
+PASS Native drag: dropping an existing part keeps the rendered view actual=(31.4369, 3.3695, 0.2181) expected=(31.4369, 3.3695, 0.2181)
+PASS Native drag: the grab point follows the mouse with fixed depth actual=(26.2031, 1.6946, 0.9988) expected=(26.2031, 1.6946, 0.9988)
+PASS Native drag: ignores a distant endpoint along the mouse ray
+PASS Native drag: nearby endpoints still snap
+PASS Mirror drag: closer points on the moving mirror and its child cannot steal the fixed attachment
+PASS Mirror drag: the reflected copy accepts a fixed attachment while excluding itself
+PASS Mirror drag: the reflected cursor ray reaches a fixed surface behind a moving child
+PASS Mirror drag: a moving child alone cannot become the reflected part's parent
+PASS Mirror drag: picking up a centerline part cannot claim a nearby placed part as its reflection
+PASS Native drag: rendered view stays put in Focused mode actual=(17.4816, 4.1071, -0.8296) expected=(17.4816, 4.1071, -0.8296)
+PASS Native drag: an active edit preserves camera angle and zoom
+PASS Native drag: dropping an existing part keeps the rendered view actual=(17.4816, 4.1071, -0.8296) expected=(17.4816, 4.1071, -0.8296)
+PASS Audit: disabling the plugin detaches all editor hooks
+PASS Audit: reenabling restores editor tools and hidden-part picking
+RESULT 559 passed, 0 failed

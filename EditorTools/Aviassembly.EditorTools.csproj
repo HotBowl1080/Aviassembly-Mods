@@ -15,6 +15,8 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="src\**\*.cs" />
+    <!-- Cancelled feature remains preserved on disk, excluded from this release. -->
+    <Compile Remove="src\NamedSelections.cs;src\NamedSelectionsUI.cs" />
     <Reference Include="$(ManagedDir)\*.dll"><Private>false</Private></Reference>
     <Reference Include="$(GameDir)\BepInEx\core\BepInEx.dll"><Private>false</Private></Reference>
     <Reference Include="$(GameDir)\BepInEx\core\0Harmony.dll"><Private>false</Private></Reference>

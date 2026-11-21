@@ -10,7 +10,8 @@ namespace Aviassembly.EditorTools
         // changes handedness, hence the negative quaternion angles below.
         internal static Vector3 FromBlender(Vector3 v) => new Vector3(v.x, v.z, v.y);
         internal static Vector3 ToBlender(Vector3 v) => new Vector3(v.x, v.z, v.y);
-        internal static Vector3 Axis(int i) => i == 0 ? Vector3.right : i == 1 ? Vector3.forward : Vector3.up;
+        // Interactive tools use native game axes, matching arrow/ring labels.
+        internal static Vector3 Axis(int i) => i == 0 ? Vector3.right : i == 1 ? Vector3.up : Vector3.forward;
         internal static Quaternion EulerXYZ(Vector3 e) => Quaternion.AngleAxis(-e.z, Vector3.up) *
             Quaternion.AngleAxis(-e.y, Vector3.forward) * Quaternion.AngleAxis(-e.x, Vector3.right);
         internal static Vector3 EulerXYZ(Quaternion q)

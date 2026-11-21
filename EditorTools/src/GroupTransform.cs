@@ -40,16 +40,18 @@ namespace Aviassembly.EditorTools
                 if (e.part == null) continue;
                 var rotation = e.part.lockRotation ? e.rotation : delta * e.rotation;
                 e.part.SetPositionAndRotation(pivot + delta * (e.position - Pivot), rotation);
-                e.part.rotationOffset = Quaternion.Inverse(e.part.baseRotation) * rotation;
+                bool rotated = Quaternion.Angle(rotation, e.rotation) > 0.00001f;
+                if (rotated) e.part.rotationOffset = Quaternion.Inverse(e.part.baseRotation) * rotation;
                 if (e.mirror != null)
                 {
-                    var mirroredRotation = Quaternion.Angle(rotation, e.rotation) > 0.00001f ? placer.symmetryPlane.GetMirroredRotation(e.part.transform) : e.mirrorRotation;
+                    var mirroredRotation = rotated ? placer.symmetryPlane.GetMirroredRotation(e.part.transform) : e.mirrorRotation;
                     e.mirror.SetPositionAndRotation(placer.symmetryPlane.GetMirroredPosition(e.part.transform.position), mirroredRotation);
-                    e.mirror.rotationOffset = Quaternion.Inverse(e.mirror.baseRotation) * mirroredRotation;
+                    if (rotated) e.mirror.rotationOffset = Quaternion.Inverse(e.mirror.baseRotation) * mirroredRotation;
                 }
             }
         }
         internal void Restore() => snapshot.Restore();
+        internal bool Moves(BuildingPart part) => snapshot.Contains(part);
         internal TransformSnapshot BeforeSave() { var preview = new TransformSnapshot(affected); snapshot.Restore(); return preview; }
         internal void Commit()
         {

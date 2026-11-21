@@ -60,8 +60,8 @@ namespace Aviassembly.EditorTools
                 if (keyboard != null) keyboard.onTextInput += OnText;
             }
             ValidateRecentAction();
-            if (Session.Active && (!host.PrecisionContextValid || Session.Target == null ||
-                source == null || source.currentSelectedPart != Session.Target || source.currentMovingPart != null || !Application.isFocused))
+            if (Session.Active && (!host.PrecisionContextValid || host.TextEntryActive || Session.Target == null ||
+                source == null || source.currentSelectedPart != Session.SelectionAtStart || source.currentMovingPart != null || !Application.isFocused))
             { Cancel(); return; }
             if (!Application.isFocused || keyboard == null) return;
             ProcessInput();
@@ -85,7 +85,7 @@ namespace Aviassembly.EditorTools
                         handleDragging = false;
                         if (!numeric) Apply();
                     }
-                    else if (!handleDragging && Time.frameCount != beginFrame && Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame) Apply();
+                    else if (!handleDragging && Time.frameCount != beginFrame && Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame && !host.PointerOverPanel()) Apply();
                     return;
                 }
                 if (keyboard.xKey.wasPressedThisFrame) Constrain(0, keyboard.shiftKey.isPressed);
@@ -94,11 +94,11 @@ namespace Aviassembly.EditorTools
                 if (Mouse.current != null && Mouse.current.middleButton.wasPressedThisFrame && !Trackball)
                     ConstrainByMouse(Mouse.current.position.ReadValue(), keyboard.shiftKey.isPressed);
                 if (Rotating && keyboard.rKey.wasPressedThisFrame && Time.frameCount != beginFrame)
-                { Trackball = !Trackball; Axis = -1; PlaneLock = false; Local = false; }
+                { Trackball = !Trackball; Axis = -1; PlaneLock = false; Local = false; component = 0; }
                 if (keyboard.backspaceKey.wasPressedThisFrame) Backspace();
                 if (keyboard.tabKey.wasPressedThisFrame)
                 {
-                    int count = (Rotating && !Trackball) || (Axis >= 0 && !PlaneLock) ? 1 : (PlaneLock || Trackball ? 2 : 3);
+                    int count = ComponentCount;
                     component = (component + (keyboard.ctrlKey.isPressed ? count - 1 : 1)) % count;
                 }
                 foreach (char c in queuedText) Type(c);
@@ -106,7 +106,7 @@ namespace Aviassembly.EditorTools
                 UpdateMouse();
                 if (keyboard.enterKey.wasPressedThisFrame || keyboard.numpadEnterKey.wasPressedThisFrame ||
                     (Time.frameCount != beginFrame && Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame &&
-                     !(UI?.Contains(Mouse.current.position.ReadValue()) ?? false))) Apply();
+                     !(UI?.Contains(Mouse.current.position.ReadValue()) ?? false) && !host.PointerOverPanel())) Apply();
             }
             else if (host.InEditor && !host.TextEntryActive && !BlockGameInput)
             {
@@ -117,6 +117,18 @@ namespace Aviassembly.EditorTools
                     if (BeginRecentAdjustment()) { foreach (char c in input) Type(c); UpdateHandle(); return; }
                 }
                 if (keyboard.escapeKey.wasPressedThisFrame || (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)) ClearRecentAction();
+                if (CanStart && !keyboard.ctrlKey.isPressed && !keyboard.altKey.isPressed)
+                {
+                    int axis = keyboard.xKey.wasPressedThisFrame ? 0 : keyboard.yKey.wasPressedThisFrame ? 1 : keyboard.zKey.wasPressedThisFrame ? 2 : -1;
+                    bool move = placer.moveGizmo != null && placer.moveGizmo.gameObject.activeInHierarchy;
+                    bool rotate = placer.rotationGizmo != null && placer.rotationGizmo.gameObject.activeInHierarchy;
+                    bool menuKnown = move != rotate || (move && lastMenuPart == placer.currentSelectedPart);
+                    if (axis >= 0 && menuKnown && Begin(rotate && (!move || lastMenuRotation), true))
+                    {
+                        Constrain(axis, keyboard.shiftKey.isPressed);
+                        return;
+                    }
+                }
                 if (!keyboard.ctrlKey.isPressed && !keyboard.altKey.isPressed && CanStart &&
                     !(MouseInput.Instance != null && MouseInput.Instance.PointerIsOverUI))
                 {
@@ -127,16 +139,32 @@ namespace Aviassembly.EditorTools
         }
         private void OnText(char c)
         {
-            if (!IsNumberCharacter(c) || (keyboard != null && (keyboard.ctrlKey.isPressed || keyboard.altKey.isPressed))) return;
+            if (!IsNumberCharacter(c) || host.TextEntryActive || (keyboard != null && (keyboard.ctrlKey.isPressed || keyboard.altKey.isPressed))) return;
             if ((Session.Active && Modal) || (!BlockGameInput && recent != null && CanStart && !host.TextEntryActive)) queuedText += c;
         }
         private static bool IsNumberCharacter(char c) => (c >= '0' && c <= '9') || c == '.' || c == '-' || c == '/';
         internal bool Begin(bool rotation, bool modal, bool fromHandle = false)
         {
             bool allowed = fromHandle ? host.CanStartHandle && placer != null && placer.currentSelectedPart != null && placer.currentMovingPart == null : CanStart;
-            if (!allowed || (rotation && placer.currentSelectedPart.lockRotation)) return false;
+            if (!allowed) return false;
+            if (rotation && placer.currentSelectedPart.lockRotation &&
+                (host.Selection?.IsGroup != true || !Array.Exists(host.Selection.Parts, p => !p.lockRotation))) return false;
             if (!Session.Begin(placer)) return false;
+            Start(rotation, modal);
+            return true;
+        }
+
+        internal bool BeginDuplicate(PartPlacer source, BuildingPart duplicate)
+        {
+            if (source != placer || !CanStart || !Session.Begin(source, duplicate)) return false;
+            Start(false, true);
+            return true;
+        }
+
+        private void Start(bool rotation, bool modal)
+        {
             host.ShapeEditor?.ClearHint();
+            host.HoldCameraPosition();
             projection.Capture(BuildingCamera.cam);
             handleOperation = false; handleDragging = false; recent = null; toolHint = null;
             Rotating = rotation; Modal = modal; Axis = -1; Local = false; PlaneLock = false; Trackball = false;
@@ -144,17 +172,18 @@ namespace Aviassembly.EditorTools
             readoutNumbers = Vector3.zero;
             for (int i = 0; i < 3; i++) { numbers[i] = ""; inverse[i] = false; }
             startMouse = Mouse.current != null ? Mouse.current.position.ReadValue() : Vector2.zero;
+            geometry = !rotation && modal && PartPlacer.snapMode && ProjectionCamera != null ? new GeometrySnap(ProjectionCamera, Session, host) : null;
+            moveAnchor = null;
+            snapHit = null;
             lastMouseAngle = Polar(startMouse); mouseAngle = 0; beginFrame = Time.frameCount;
             if (blocker == null) blocker = new GameObject("EditorTools Precision Input").AddComponent<PrecisionInputBlocker>();
             if (InputManager.Instance != null) InputManager.Instance.currentInputBlocker = blocker;
             if (modal && EventSystem.current != null) EventSystem.current.SetSelectedGameObject(null);
-            host.StopFocusTransition();
             Status = rotation ? "Rotate" : "Move";
-            return true;
         }
         internal void ObserveSelection(PartPlacer source, BuildingPart next)
         {
-            if (Session.Active && (source != placer || next != Session.Target)) Cancel();
+            if (Session.Active && (source != placer || next != Session.SelectionAtStart)) Cancel();
             if (source == placer && !Session.Active) ClearRecentAction();
         }
         internal void Constrain(int axis, bool plane)
@@ -179,8 +208,14 @@ namespace Aviassembly.EditorTools
         internal void Backspace()
         {
             if (numbers[component].Length > 0) numbers[component] = numbers[component].Substring(0, numbers[component].Length - 1);
-            else if (numeric) { numeric = false; inverse[component] = false; }
+            else if (numeric)
+            {
+                inverse[component] = false;
+                numeric = false;
+                for (int i = 0; i < ComponentCount; i++) numeric |= numbers[i].Length > 0 || inverse[i];
+            }
         }
+        private int ComponentCount => Trackball || PlaneLock ? 2 : Rotating || Axis >= 0 ? 1 : 3;
         private Vector3 Direction(int i) => Local ? Session.StartRotation * TransformMath.Axis(i) : TransformMath.Axis(i);
         internal void ConstrainByMouse(Vector2 mouse, bool plane)
         {
@@ -211,17 +246,9 @@ namespace Aviassembly.EditorTools
             var plane = new Plane(normal, Session.StartPosition);
             return plane.Raycast(ray, out float d) ? ray.GetPoint(d) : Session.StartPosition;
         }
-        private float AxisPoint(Vector2 mouse, Vector3 direction)
+        private float AxisDrag(Vector2 mouse, Vector3 direction, Vector3 anchor)
         {
-            var cam = ProjectionCamera;
-            var ray = cam.ScreenPointToRay(mouse);
-            float b = Vector3.Dot(direction, ray.direction), denom = 1 - b * b;
-            if (denom > 0.001f)
-            {
-                var w = ray.origin - Session.StartPosition;
-                return (Vector3.Dot(direction, w) - b * Vector3.Dot(ray.direction, w)) / denom;
-            }
-            return mouse.y * (2 * Vector3.Distance(cam.transform.position, Session.StartPosition) * Mathf.Tan(cam.fieldOfView * Mathf.Deg2Rad / 2) / Mathf.Max(1, cam.pixelHeight));
+            return DragProjection.AxisDisplacement(ProjectionCamera, anchor, direction, mouse - startMouse, 0.25f, out _);
         }
         internal void UpdateMouse()
         {
@@ -234,9 +261,10 @@ namespace Aviassembly.EditorTools
             bool fine = keyboard != null && keyboard.shiftKey.isPressed, snap = keyboard != null && keyboard.ctrlKey.isPressed;
             float factor = fine ? 0.1f : 1;
             var values = Vector3.zero; ValidInput = true;
+            snapHit = null;
             if (numeric)
             {
-                for (int i = 0; i < 3; i++)
+                for (int i = 0; i < ComponentCount; i++)
                 {
                     float v = 0;
                     if (numbers[i] != "" && !TransformMath.Number(numbers[i], out v)) ValidInput = false;
@@ -262,7 +290,7 @@ namespace Aviassembly.EditorTools
                 }
                 else
                 {
-                    if (Axis >= 0 && !PlaneLock) delta = Direction(Axis) * (AxisPoint(mouse, Direction(Axis)) - AxisPoint(startMouse, Direction(Axis))) * factor;
+                    if (Axis >= 0 && !PlaneLock) delta = Direction(Axis) * AxisDrag(mouse, Direction(Axis), Session.StartPosition) * factor;
                     else
                     {
                         Vector3 normal = PlaneLock ? Direction(Axis) : cam.transform.forward;
@@ -279,6 +307,15 @@ namespace Aviassembly.EditorTools
                             delta = Direction(0) * components.x + Direction(1) * components.y + Direction(2) * components.z;
                         }
                     }
+                    else if (!fine && TryHoverTarget(mouse, out var hit))
+                    {
+                        if (Axis >= 0 && !PlaneLock) delta = Direction(Axis) * HoverDistance(hit, Direction(Axis));
+                        else
+                        {
+                            delta = hit - FreeSnapAnchor(hit);
+                            if (PlaneLock) delta = Vector3.ProjectOnPlane(delta, Direction(Axis));
+                        }
+                    }
                 }
                 position += delta;
                 readoutNumbers = Vector3.zero;
@@ -293,7 +330,7 @@ namespace Aviassembly.EditorTools
             {
                 Vector2 delta = (mouse - startMouse) * (0.35f * factor);
                 if (numeric) delta = new Vector2(values.x, values.y);
-                if (snap && !numeric) delta = new Vector2(TransformMath.Snap(delta.x, fine ? 1 : 5), TransformMath.Snap(delta.y, fine ? 1 : 5));
+                if (!numeric) delta = new Vector2(RotationSteps.Apply(delta.x, placer.rotationGizmo), RotationSteps.Apply(delta.y, placer.rotationGizmo));
                 rotation = Quaternion.AngleAxis(delta.x, cam.transform.up) * Quaternion.AngleAxis(-delta.y, cam.transform.right) * rotation;
                 readoutNumbers = new Vector3(delta.x, delta.y, 0);
             }
@@ -301,10 +338,10 @@ namespace Aviassembly.EditorTools
             {
                 Vector3 direction = Axis >= 0 ? Direction(Axis) : cam.transform.forward;
                 float sign = Mathf.Sign(Vector3.Dot(direction, cam.transform.forward));
-                float angle = numeric ? -values.x : mouseAngle * factor * sign;
-                if (snap && !numeric) angle = TransformMath.Snap(angle, fine ? 1 : 5);
+                float angle = numeric ? values.x : mouseAngle * factor * sign;
+                if (!numeric) angle = RotationSteps.Apply(angle, placer.rotationGizmo);
                 rotation = Quaternion.AngleAxis(angle, direction) * rotation;
-                readoutNumbers = new Vector3(-angle, 0, 0);
+                readoutNumbers = new Vector3(angle, 0, 0);
             }
             if (!TransformMath.Finite(position) || position.magnitude > 1000000) { ValidInput = false; Status = "Value exceeds supported coordinate range"; return; }
             Session.Preview(position, rotation);
@@ -317,11 +354,14 @@ namespace Aviassembly.EditorTools
         {
             if (!Session.Active || !ValidInput) return;
             var remember = handleOperation ? CaptureRecentAction() : null;
-            Session.Commit(); End(); recent = remember;
+            try { if (Session.Commit()) recent = remember; }
+            finally { End(); }
         }
         internal void Cancel() { ClearRecentAction(); if (!Session.Active) return; Session.Cancel(); End(); }
         private void End()
         {
+            geometry = null;
+            snapHit = null;
             consumedFrame = Time.frameCount; Modal = false; queuedText = "";
             handleOperation = false; handleDragging = false;
             ClearHandleSelection();

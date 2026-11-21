@@ -17,7 +17,8 @@ namespace Aviassembly.EditorTools
         private readonly List<Renderer> renderers = new List<Renderer>();
         private PartPlacer placer;
         private PlaneContainer plane;
-        private bool assigning, box, dragging;
+        private bool assigning, highlightSelection, box, dragging;
+        internal bool AssigningSelection => assigning;
         private Vector2 boxStart;
         private int consumed = -1, inputFrame = -1;
         private GameObject labelRoot, boxRoot;
@@ -38,22 +39,28 @@ namespace Aviassembly.EditorTools
             Prune();
             if (parts.Count == 0 && Eligible(source.currentSelectedPart)) parts.Add(source.currentSelectedPart);
             if (Application.isFocused) ProcessInput();
+            else { box = false; dragging = false; }
         }
         internal void SelectionAssigned(BuildingPart part)
         {
             if (assigning) return;
+            highlightSelection = false;
             parts.Clear(); if (Eligible(part)) parts.Add(part);
         }
-        internal void Set(IEnumerable<BuildingPart> selection)
+        internal void Set(IEnumerable<BuildingPart> selection, bool highlightSelection = true)
         {
             if (host.Precision.Session.Active || host.ShapeEditor?.Active == true) return;
             parts.Clear(); foreach (var p in selection) if (Eligible(p) && !parts.Contains(p)) parts.Add(p);
+            this.highlightSelection = highlightSelection && parts.Count > 0;
             AssignActive(parts.LastOrDefault());
         }
         internal void Toggle(BuildingPart part)
         {
             if (!Eligible(part)) return;
-            var next = Parts.ToList(); if (!next.Remove(part)) next.Add(part); Set(next);
+            var next = Parts.ToList();
+            if (!next.Contains(part)) next.Add(part);
+            else if (highlightSelection) next.Remove(part);
+            Set(next);
         }
         private void AssignActive(BuildingPart part)
         {
@@ -74,7 +81,7 @@ namespace Aviassembly.EditorTools
         }
         internal void Clear(bool native = true)
         {
-            parts.Clear(); box = dragging = false; highlight.Clear();
+            parts.Clear(); highlightSelection = box = dragging = false; highlight.Clear();
             if (native) AssignActive(null);
             if (labelRoot != null) labelRoot.SetActive(false);
             if (boxRoot != null) boxRoot.SetActive(false);
@@ -82,7 +89,8 @@ namespace Aviassembly.EditorTools
         internal void ProcessInput()
         {
             var k = Keyboard.current; var mouse = Mouse.current;
-            if (inputFrame == Time.frameCount || k == null || mouse == null) return;
+            if (k == null || mouse == null) { box = false; dragging = false; return; }
+            if (inputFrame == Time.frameCount) return;
             inputFrame = Time.frameCount;
             if (!host.PrecisionContextValid || host.TextEntryActive || host.Precision.BlockGameInput || host.ShapeEditor?.Active == true || placer.currentMovingPart != null)
             { box = dragging = false; return; }
@@ -98,7 +106,7 @@ namespace Aviassembly.EditorTools
                 return;
             }
             if (MouseInput.Instance != null && MouseInput.Instance.PointerIsOverUI) return;
-            if (k.aKey.wasPressedThisFrame && !k.ctrlKey.isPressed)
+            if (plane != null && k.aKey.wasPressedThisFrame && !k.ctrlKey.isPressed)
             {
                 if (k.altKey.isPressed) Clear(); else Set(plane.GetComponentsInChildren<BuildingPart>().Where(Eligible));
                 consumed = Time.frameCount; return;
@@ -110,7 +118,12 @@ namespace Aviassembly.EditorTools
             if (OverHandle(ray)) return;
             var hit = Pick(ray);
             if (k.shiftKey.isPressed) { if (hit != null) Toggle(hit); }
-            else Set(hit == null ? new BuildingPart[0] : new[] { hit });
+            else
+            {
+                Set(hit == null ? Array.Empty<BuildingPart>() : new[] { hit }, highlightSelection: false);
+                // A normal click leaves group selection and keeps ordinary focus behavior.
+                host.SelectionAssigned(placer);
+            }
             consumed = Time.frameCount;
         }
         internal BuildingPart Pick(Ray ray)
@@ -146,10 +159,10 @@ namespace Aviassembly.EditorTools
             Prune();
             if (!host.InEditor || host.ShortcutsOpen) { highlight.Clear(); if (labelRoot != null) labelRoot.SetActive(false); if (boxRoot != null) boxRoot.SetActive(false); return; }
             renderers.Clear();
-            if (parts.Count > 1)
-                foreach (var p in parts)
-                    foreach (var r in p.GetComponentsInChildren<Renderer>())
-                        if (r.GetComponentInParent<BuildingPart>() == p && r.enabled) renderers.Add(r);
+            var session = host.Precision.Session;
+            if (session.Duplicating) CollectRenderers(session.Target);
+            else if (highlightSelection)
+                foreach (var p in parts) CollectRenderers(p);
             highlight.Render(BuildingCamera.cam, renderers, renderers.Count > 0);
             if (IsGroup && !host.Precision.Session.Active)
             {
@@ -159,7 +172,7 @@ namespace Aviassembly.EditorTools
             EnsureUI();
             if (labelRoot == null) return;
             labelRoot.SetActive(IsGroup || box);
-            label.text = box ? "Box select: drag | Shift add | Ctrl subtract | Esc cancel" : parts.Count + " selected | Shift-click toggle | G move | R rotate";
+            label.text = box ? "Drag to select  ·  Shift add  ·  Ctrl subtract" : parts.Count + " selected";
             boxRoot.SetActive(box && dragging);
             if (box && dragging)
             {
@@ -171,6 +184,14 @@ namespace Aviassembly.EditorTools
                 rect.sizeDelta = new Vector2(Mathf.Abs(a.x - b.x), Mathf.Abs(a.y - b.y));
             }
         }
+
+        private void CollectRenderers(BuildingPart part)
+        {
+            if (part == null) return;
+            foreach (var renderer in part.GetComponentsInChildren<Renderer>())
+                if (renderer.GetComponentInParent<BuildingPart>() == part && renderer.enabled) renderers.Add(renderer);
+        }
+
         private void EnsureUI()
         {
             if (labelRoot != null) return;
@@ -180,9 +201,12 @@ namespace Aviassembly.EditorTools
                 canvas = c.rootCanvas;
                 labelRoot = new GameObject("EditorTools selection count", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
                 var rect = (RectTransform)labelRoot.transform; rect.SetParent(canvas.transform, false);
-                rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0, 1); rect.anchoredPosition = new Vector2(24, -120); rect.sizeDelta = new Vector2(850, 48);
+                rect.anchorMin = rect.anchorMax = rect.pivot = Vector2.one;
+                rect.anchoredPosition = new Vector2(-32, -94);
+                rect.sizeDelta = new Vector2(640, 42);
                 label = labelRoot.GetComponent<TextMeshProUGUI>(); label.font = native.text.font; label.fontSharedMaterial = native.text.font.material;
-                label.fontSize = 24; label.color = new Color(1f, 0.8f, 0.3f); label.raycastTarget = false;
+                label.fontSize = 27; label.color = new Color(1f, 0.8f, 0.3f); label.raycastTarget = false;
+                label.alignment = TextAlignmentOptions.MidlineRight;
                 label.fontMaterial.SetFloat("_OutlineWidth", 0.25f); label.fontMaterial.SetColor("_OutlineColor", Color.black); label.UpdateMeshPadding();
                 boxRoot = new GameObject("EditorTools selection rectangle", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Outline));
                 boxRoot.transform.SetParent(canvas.transform, false);

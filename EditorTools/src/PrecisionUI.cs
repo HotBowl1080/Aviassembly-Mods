@@ -42,12 +42,13 @@ namespace Aviassembly.EditorTools
             }
             return null;
         }
-        internal void Refresh(bool visible, BuildingPart selected, bool editable)
+        internal void Refresh(bool visible, BuildingPart selected, bool editable, string clipboardMessage = "")
         {
             if (!IsAlive) return;
-            root.SetActive(visible && selected != null && controller.HasReadout);
+            bool showClipboard = clipboardMessage.Length > 0 && !controller.Editing;
+            root.SetActive(visible && (showClipboard || (controller.HasReadout && (selected != null || controller.HasShapeReadout))));
             if (!root.activeSelf) return;
-            label.text = controller.ReadoutLine;
+            label.text = showClipboard ? clipboardMessage : controller.ReadoutLine;
         }
         internal bool Contains(Vector2 position) => false;
         internal void EndEdit() { }

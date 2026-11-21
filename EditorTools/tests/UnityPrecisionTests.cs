@@ -94,19 +94,19 @@ public static class UnityPrecisionTests
         // Exercise modal commands with actual Unity camera and input-device state.
         Put(precision, "placer", placer);
         check(precision.Begin(false, true), "Precision: G-style modal move begins");
-        precision.Constrain(2, false); precision.Type('0'); precision.Type('.'); precision.Type('3'); precision.Type('5'); precision.UpdateMouse();
-        check(Vector3.Distance(part.transform.position, p0 + Vector3.up * 0.35f) < 0.00001f, "Precision: G Z 0.35 moves vertically by exact amount");
-        precision.Constrain(2, false);
-        check(precision.Local && precision.Axis == 2, "Precision: repeating axis switches to Local");
-        precision.Constrain(2, false);
+        precision.Constrain(1, false); precision.Type('0'); precision.Type('.'); precision.Type('3'); precision.Type('5'); precision.UpdateMouse();
+        check(Vector3.Distance(part.transform.position, p0 + Vector3.up * 0.35f) < 0.00001f, "Precision: G Y 0.35 moves vertically by exact amount");
+        precision.Constrain(1, false);
+        check(precision.Local && precision.Axis == 1, "Precision: repeating axis switches to Local");
+        precision.Constrain(1, false);
         check(precision.Axis == -1 && !precision.Local, "Precision: third axis press removes constraint");
         precision.Cancel();
         Put(precision, "consumedFrame", -1);
         check(precision.Begin(true, true), "Precision: R-style modal rotation begins");
-        precision.Constrain(2, false); foreach (char c in "-33.5") precision.Type(c); precision.UpdateMouse();
-        check(Quaternion.Angle(part.transform.rotation, Quaternion.AngleAxis(33.5f, Vector3.up) * r0) < 0.001f, "Precision: R Z -33.5 uses Blender rotation convention");
+        precision.Constrain(1, false); foreach (char c in "-33.5") precision.Type(c); precision.UpdateMouse();
+        check(Quaternion.Angle(part.transform.rotation, Quaternion.AngleAxis(-33.5f, Vector3.up) * r0) < 0.001f, "Precision: R Y -33.5 uses native rotation convention");
         precision.Type('-'); precision.UpdateMouse();
-        check(Quaternion.Angle(part.transform.rotation, Quaternion.AngleAxis(-33.5f, Vector3.up) * r0) < 0.001f, "Precision: minus toggles the whole numeric value");
+        check(Quaternion.Angle(part.transform.rotation, Quaternion.AngleAxis(33.5f, Vector3.up) * r0) < 0.001f, "Precision: minus toggles the whole numeric value");
         precision.Cancel(); Put(precision, "consumedFrame", -1);
         precision.Begin(false, true); precision.Constrain(0, false); precision.Type('2'); precision.Type('/'); precision.UpdateMouse();
         check(Vector3.Distance(part.transform.position, p0 + Vector3.right * 0.5f) < 0.00001f, "Precision: slash numeric reciprocal works");
@@ -114,8 +114,8 @@ public static class UnityPrecisionTests
         precision.Begin(false, true); precision.Type('-'); precision.UpdateMouse(); precision.Apply();
         check(session.Active && !precision.ValidInput, "Precision: partial numeric entry cannot commit");
         precision.Cancel(); Put(precision, "consumedFrame", -1);
-        precision.Begin(false, true); precision.Constrain(2, true);
-        check(precision.PlaneLock, "Precision: Shift Z excludes the vertical axis");
+        precision.Begin(false, true); precision.Constrain(1, true);
+        check(precision.PlaneLock, "Precision: Shift Y excludes the vertical axis");
         Call(placer, "set_currentSelectedPart", child);
         check(!session.Active && Vector3.Distance(part.transform.position, p0) < 0.0001f, "Precision: selection change cancels preview before native selection mutation");
         Call(placer, "set_currentSelectedPart", part); plugin.Observe(placer);
@@ -157,6 +157,23 @@ public static class UnityPrecisionTests
             InputAt(screenStart);
         }
         InputAt(screenStart);
+        precision.Begin(false, true); precision.Type('2');
+        InputAt(screenStart, Key.Tab); precision.ProcessInput();
+        InputAt(screenStart, Key.Backspace); precision.ProcessInput();
+        check(Vector3.Distance(part.transform.position, p0 + Vector3.right * 2) < 0.001f,
+            "Audit: Backspace in a blank component preserves the number on another axis");
+        precision.Type('-'); precision.UpdateMouse(); precision.Constrain(0, false); precision.UpdateMouse();
+        check(precision.ValidInput && Vector3.Distance(part.transform.position, p0 + Vector3.right * 2) < 0.001f,
+            "Audit: a hidden unfinished component cannot invalidate a single-axis move");
+        ResetTransaction();
+        precision.Begin(true, true); Put(precision, "beginFrame", Time.frameCount - 1);
+        InputAt(screenStart, Key.R); precision.ProcessInput();
+        InputAt(screenStart, Key.Tab); precision.ProcessInput();
+        InputAt(screenStart, Key.R); precision.ProcessInput();
+        precision.Type('3'); precision.UpdateMouse();
+        check(!precision.Trackball && Quaternion.Angle(part.transform.rotation, Quaternion.AngleAxis(3, cam.transform.forward) * r0) < 0.03f,
+            "Audit: exiting trackball returns numeric input to the displayed angle");
+        ResetTransaction();
         precision.Begin(false, true); precision.Constrain(0, false);
         InputAt(cam.WorldToScreenPoint(p0 + Vector3.right * 2.35f)); precision.UpdateMouse();
         check(Vector3.Distance(part.transform.position, p0 + Vector3.right * 2.35f) < 0.001f, "Precision: mouse projection moves on selected axis");
@@ -172,15 +189,32 @@ public static class UnityPrecisionTests
         InputAt(cam.WorldToScreenPoint(p0 + freeOffset)); precision.UpdateMouse();
         check(Vector3.Distance(part.transform.position, p0 + freeOffset) < 0.001f, "Precision: unconstrained mouse move follows view plane");
         precision.ConstrainByMouse(screenStart + Vector2.up * 100, false);
-        check(precision.Axis == 2 && !precision.PlaneLock, "Precision: middle mouse chooses projected vertical Z axis");
+        check(precision.Axis == 1 && !precision.PlaneLock, "Precision: middle mouse chooses projected vertical Y axis");
         ResetTransaction();
+        var oblique = Quaternion.Euler(0, 32, 0);
+        cam.transform.SetPositionAndRotation(p0 - oblique * Vector3.forward * 15, oblique);
+        precision.Begin(false, true); precision.Constrain(2, false);
+        InputAt(cam.WorldToScreenPoint(p0 + Vector3.forward * 3)); precision.UpdateMouse();
+        check(Vector3.Distance(part.transform.position, p0 + Vector3.forward * 3) < 0.001f,
+            "Precision: projected axis drag matches the mouse at an oblique angle");
+        ResetTransaction();
+        var narrow = Quaternion.Euler(0, 4, 0);
+        cam.transform.SetPositionAndRotation(p0 - narrow * Vector3.forward * 15, narrow);
+        precision.Begin(false, true); precision.Constrain(2, false);
+        InputAt(screenStart - Vector2.right * 80); precision.UpdateMouse();
+        float displacement = Vector3.Dot(part.transform.position - p0, Vector3.forward);
+        float projected = screenStart.x - cam.WorldToScreenPoint(part.transform.position).x;
+        check(displacement > 0 && displacement < 15 && projected >= 0 && projected <= 80.001f,
+            "Precision: almost end-on axis motion stays bounded without overshooting the cursor");
+        ResetTransaction();
+        cam.transform.SetPositionAndRotation(p0 + new Vector3(0, 0, -15), Quaternion.identity);
         part.transform.rotation = Quaternion.AngleAxis(45, Vector3.up) * r0;
         var localRotation = part.transform.rotation;
         precision.Begin(false, true); precision.Constrain(0, false); precision.Constrain(0, false);
         foreach (char c in "0.35") precision.Type(c); precision.UpdateMouse();
         check(Vector3.Distance(part.transform.position, p0 + localRotation * Vector3.right * 0.35f) < 0.001f, "Precision: repeated X numeric input uses original local axis");
         ResetTransaction(); part.transform.rotation = r0;
-        precision.Begin(false, true); precision.Constrain(2, true);
+        precision.Begin(false, true); precision.Constrain(1, true);
         precision.Type('2'); Put(precision, "component", 1); precision.Type('3'); precision.UpdateMouse();
         check(Vector3.Distance(part.transform.position, p0 + new Vector3(2, 0, 3)) < 0.001f, "Precision: plane-lock numbers map to both included axes");
         ResetTransaction();
@@ -215,7 +249,7 @@ public static class UnityPrecisionTests
             "Precision: native mirror follows translation");
         check(Quaternion.Angle(mirror.transform.rotation, mirrorRotation) < 0.02f, "Precision: moving preserves existing mirror rotation");
         session.Cancel();
-        session.Begin(placer); session.Preview(p0, Quaternion.AngleAxis(33.5f, Vector3.up) * r0);
+        session.Begin(placer); session.Preview(p0, Quaternion.AngleAxis(-33.5f, Vector3.up) * r0);
         check(Quaternion.Angle(mirror.transform.rotation, placer.symmetryPlane.GetMirroredRotation(part.transform)) < 0.02f,
             "Precision: rotating uses native mirror orientation");
         session.Cancel();

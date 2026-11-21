@@ -4,6 +4,7 @@ using Aviassembly.EditorTools;
 using HarmonyLib;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.LowLevel;
 
@@ -68,10 +69,10 @@ public static class UnityInspectionTests
             Select(part); Refresh();
             check(clearance.Obstructions == 1, "Prop: hidden parts still obstruct the sweep");
             check(hide.IsHiddenCollider(collider), "X-ray: ghost remains excluded from editor picking");
-            hide.ToggleXray();
-            check(!hide.XrayEnabled && hide.XrayDrawCount == 0 && hide.IsHidden(other), "X-ray: Off fully hides visuals without revealing parts");
-            hide.ToggleXray();
-            check(hide.XrayEnabled && hide.XrayDrawCount > 0, "X-ray: On restores ghost view");
+            hide.RefreshXray();
+            check(hide.XrayEnabled && hide.XrayDrawCount > 0 && hide.IsHidden(other), "X-ray: hidden parts always retain ghost view");
+            check(typeof(HideParts).GetMethod("ToggleXray") == null && !typeof(HideParts).GetProperty("XrayEnabled").CanWrite,
+                "X-ray: cannot be disabled by a toggle or setter");
             hide.ShowAll();
             check(renderer.enabled && hide.XrayDrawCount == 0 && renderer.sharedMaterial == originalMaterial,
                 "X-ray: show all removes ghosts and restores original appearance");
@@ -90,6 +91,44 @@ public static class UnityInspectionTests
             check(!clearance.Enabled && !clearance.HasProp, "Prop: toolbar disables inspection");
             clearance.Toggle(); Refresh();
             check(clearance.Enabled && clearance.HasProp, "Prop: toolbar re-enables inspection");
+            var menu = Get<PlacementToolbar>(clearance, "partMenu"); var propButton = Get<Button>(clearance, "button");
+            check(propButton.GetComponentInChildren<TMPro.TMP_Text>().text.Contains("All Props"), "Prop menu: global toggle scope is explicit");
+            check(menu != null && propButton != null && propButton.GetComponentInParent<PlacementToolbar>() == menu,
+                "Prop menu: control belongs to the native selected-part toolbar");
+            if (menu != null && propButton != null)
+            {
+                var eventSystem = EventSystem.current; GameObject temporaryEvents = null;
+                if (eventSystem == null) { temporaryEvents = new GameObject("Prop menu events", typeof(EventSystem)); eventSystem = temporaryEvents.GetComponent<EventSystem>(); }
+                menu.EnableToolbar(part.gameObject); menu.transform.localScale = Vector3.one;
+                menu.transform.position = new Vector3(Screen.width * 0.5f, Screen.height * 0.5f, 0);
+                Refresh(); Canvas.ForceUpdateCanvases(); LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)menu.transform); Canvas.ForceUpdateCanvases();
+                check(propButton.gameObject.activeInHierarchy && propButton.IsInteractable(), "Prop menu: visible and enabled for selected propeller");
+                var canvas = menu.GetComponentInParent<Canvas>(); var rect = (RectTransform)propButton.transform;
+                Vector2 point = RectTransformUtility.WorldToScreenPoint(canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera, rect.TransformPoint(rect.rect.center));
+                var data = new PointerEventData(eventSystem) { button = PointerEventData.InputButton.Left, position = point, eligibleForClick = true };
+                bool before = clearance.Enabled;
+                InputSystem.QueueStateEvent(Mouse.current, new MouseState { position = point, buttons = 1 }); InputSystem.Update();
+                ExecuteEvents.Execute(propButton.gameObject, data, ExecuteEvents.pointerDownHandler); Refresh();
+                check(propButton.IsInteractable() && plugin.BlockPanelClick, "Prop menu: full pointer press blocks world selection and remains enabled");
+                check(Get<int>(menu, "lastEnableCallFrame") == Time.frameCount, "Prop menu: native visibility heartbeat survives pointer press");
+                AccessTools.Field(typeof(PlacementToolbar), "lastEnableCallFrame").SetValue(menu, Time.frameCount - 3);
+                AccessTools.Method(typeof(PlacementToolbar), "Update").Invoke(menu, null);
+                check(Get<int>(menu, "lastEnableCallFrame") == Time.frameCount,
+                    "Prop menu: patched native Update refreshes visibility before native animation checks");
+                InputSystem.QueueStateEvent(Mouse.current, new MouseState { position = point }); InputSystem.Update();
+                ExecuteEvents.Execute(propButton.gameObject, data, ExecuteEvents.pointerUpHandler); ExecuteEvents.Execute(propButton.gameObject, data, ExecuteEvents.pointerClickHandler); Refresh();
+                check(clearance.Enabled != before && !clearance.HasProp, "Prop menu: pointer release toggles inspection off");
+                propButton.onClick.Invoke(); Refresh(); check(clearance.Enabled && clearance.HasProp, "Prop menu: same control restores inspection");
+                Select(other); menu.EnableToolbar(other.gameObject); Refresh();
+                check(!propButton.gameObject.activeSelf, "Prop menu: control disappears for ordinary parts");
+                Select(null); Refresh(); check(!propButton.gameObject.activeSelf, "Prop menu: control disappears when selection clears");
+                Select(part); menu.EnableToolbar(part.gameObject); Refresh();
+                var lines = new System.Collections.Generic.List<string>();
+                foreach (Transform child in propButton.transform.parent) lines.Add(child.name + " " + string.Join(",", child.GetComponents<Component>().Select(c => c.GetType().Name)) + " " + ((RectTransform)child).rect);
+                System.IO.File.WriteAllLines(System.IO.Path.Combine(BepInEx.Paths.GameRootPath, "prop-menu-layout.txt"), lines);
+                InputSystem.QueueStateEvent(Mouse.current, new MouseState()); InputSystem.Update();
+                if (temporaryEvents != null) UnityEngine.Object.DestroyImmediate(temporaryEvents);
+            }
             Select(other); hide.Observe(placer, false); hide.HideSelected();
             GameManager.gameMode = GameMode.Flying; hide.Observe(placer, false); Refresh();
             check(hide.XrayDrawCount == 0 && renderer.enabled && !clearance.HasProp && !ring.gameObject.activeSelf,

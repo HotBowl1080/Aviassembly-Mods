@@ -7,10 +7,7 @@ namespace Aviassembly.EditorTools
 {
     public sealed class HidePartsUI : IDisposable
     {
-        private GameObject hideRoot, showRoot, xrayRoot;
-        private Button xrayButton;
-        private TMP_Text xrayLabel;
-        private HideParts owner;
+        private GameObject hideRoot, showRoot;
         private Button hideButton, showButton;
         private TMP_Text showLabel;
         private Canvas canvas;
@@ -22,23 +19,22 @@ namespace Aviassembly.EditorTools
             {
                 var canvas = native.GetComponentInParent<Canvas>();
                 if (canvas == null || !canvas.isActiveAndEnabled || native.buttonImage == null || native.text == null || native.text.font == null) continue;
-                var ui = new HidePartsUI { canvas = canvas.rootCanvas, owner = owner };
+                var ui = new HidePartsUI { canvas = canvas.rootCanvas };
                 TMP_Text hideText;
                 ui.hideRoot = CreateButton(native, "EditorTools Hide Part", "Hide [V]", 180, true, () => owner.HideSelected(), out ui.hideButton, out hideText);
                 ui.showRoot = CreateButton(native, "EditorTools Show Parts", "Show All (0) [I]", 250, false, owner.ShowAllFromUI, out ui.showButton, out ui.showLabel);
-                ui.xrayRoot = CreateButton(native, "EditorTools X-ray", "X-ray On", 165, false, owner.ToggleXray, out ui.xrayButton, out ui.xrayLabel, false);
                 ui.Refresh(true, false, 0, false);
                 return ui;
             }
             return null;
         }
 
-        internal static GameObject CreateButton(MirrorButton native, string name, string text, float width, bool crossedEye, UnityEngine.Events.UnityAction action, out Button button, out TMP_Text label, bool withIcon = true)
+        internal static GameObject CreateButton(MirrorButton native, string name, string text, float width, bool crossedEye, UnityEngine.Events.UnityAction action, out Button button, out TMP_Text label, bool withIcon = true, Transform parent = null)
         {
             var root = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button), typeof(LayoutElement));
             root.layer = native.gameObject.layer;
             var rect = (RectTransform)root.transform;
-            rect.SetParent(EditorToolRow.Get(native), false);
+            rect.SetParent(parent != null ? parent : EditorToolRow.Get(native), false);
             float height = Mathf.Max(38, native.buttonImage.rectTransform.rect.height);
             rect.sizeDelta = new Vector2(width, height);
             var layout = root.GetComponent<LayoutElement>();
@@ -96,9 +92,6 @@ namespace Aviassembly.EditorTools
             if (!IsAlive) return;
             hideRoot.SetActive(visible);
             showRoot.SetActive(visible);
-            xrayRoot.SetActive(visible);
-            xrayButton.interactable = canInteract;
-            xrayLabel.text = owner.XrayEnabled ? "X-ray On" : "X-ray Off";
             hideButton.interactable = canHide;
             showButton.interactable = canInteract && count > 0;
             showLabel.text = "Show All (" + count + ") [I]";
@@ -109,15 +102,13 @@ namespace Aviassembly.EditorTools
             if (!IsAlive) return false;
             var camera = canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera;
             return (hideRoot.activeInHierarchy && RectTransformUtility.RectangleContainsScreenPoint((RectTransform)hideRoot.transform, position, camera)) ||
-                (showRoot.activeInHierarchy && RectTransformUtility.RectangleContainsScreenPoint((RectTransform)showRoot.transform, position, camera)) ||
-                (xrayRoot.activeInHierarchy && RectTransformUtility.RectangleContainsScreenPoint((RectTransform)xrayRoot.transform, position, camera));
+                (showRoot.activeInHierarchy && RectTransformUtility.RectangleContainsScreenPoint((RectTransform)showRoot.transform, position, camera));
         }
 
         public void Dispose()
         {
             if (hideRoot != null) UnityEngine.Object.Destroy(hideRoot);
             if (showRoot != null) UnityEngine.Object.Destroy(showRoot);
-            if (xrayRoot != null) UnityEngine.Object.Destroy(xrayRoot);
         }
     }
 

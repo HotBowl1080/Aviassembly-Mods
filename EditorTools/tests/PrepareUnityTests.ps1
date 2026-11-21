@@ -25,6 +25,7 @@ $count = 0
 foreach ($type in $assembly.MainModule.Types) {
     if ($type.Name -eq 'BuildingCamera' -or $type.Name -eq 'Singleton`1') { continue }
     foreach ($method in $type.Methods) {
+        if ($method.Name -eq 'OnDisable' -and $type.Name -in 'ProceduralSizeGizmo','ProceduralAxisScaleGizmo','ProceduralScaleGizmos') { continue }
         $runtimeInit = @($method.CustomAttributes | Where-Object { $_.AttributeType.Name -eq 'RuntimeInitializeOnLoadMethodAttribute' }).Count -gt 0
         if (!$method.HasBody -or ($method.Name -notin $callbacks -and !$runtimeInit)) { continue }
         $method.Body.Instructions.Clear()

@@ -32,14 +32,13 @@ namespace Aviassembly.EditorTools
         private bool disposed;
         private readonly HiddenXray xray = new HiddenXray();
         private readonly List<Renderer> xrayRenderers = new List<Renderer>();
-        public bool XrayEnabled { get; private set; } = true;
+        public bool XrayEnabled => true;
         internal int XrayDrawCount => xray.DrawCount;
         internal bool WasVisible(Renderer renderer)
         {
             var owner = renderer != null ? renderer.GetComponentInParent<BuildingPart>() : null;
             return owner != null && hidden.TryGetValue(owner, out var entry) && entry.Renderers.TryGetValue(renderer, out var visible) ? visible : renderer != null && renderer.enabled;
         }
-        public void ToggleXray() { if (CanInteract) { XrayEnabled = !XrayEnabled; RefreshXray(); RefreshUI(); } }
         internal void RefreshXray()
         {
             xrayRenderers.Clear();
@@ -120,7 +119,9 @@ namespace Aviassembly.EditorTools
             if (pollShortcut && CanInteract && Application.isFocused && Time.frameCount != shortcutFrame)
             {
                 if (Input.GetKeyDown(KeyCode.I)) { shortcutFrame = Time.frameCount; HandleShortcut(KeyCode.I); }
-                else if (Input.GetKeyDown(KeyCode.V)) { shortcutFrame = Time.frameCount; HandleShortcut(KeyCode.V); }
+                else if (Input.GetKeyDown(KeyCode.V) && Keyboard.current?.ctrlKey.isPressed != true &&
+                    !Input.GetKey(KeyCode.LeftControl) && !Input.GetKey(KeyCode.RightControl))
+                { shortcutFrame = Time.frameCount; HandleShortcut(KeyCode.V); }
             }
         }
 

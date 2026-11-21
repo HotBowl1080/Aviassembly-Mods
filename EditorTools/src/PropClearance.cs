@@ -5,6 +5,8 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
+using HarmonyLib;
+using UnityEngine.InputSystem;
 
 namespace Aviassembly.EditorTools
 {
@@ -24,11 +26,12 @@ namespace Aviassembly.EditorTools
         private TMP_Text buttonLabel, label;
         private Button button;
         private Canvas canvas;
+        private PlacementToolbar partMenu;
         private float nextCheck;
         private BuildingPart lastPart;
         private PartPlacer currentPlacer;
         private bool CanToggle => host.PrecisionContextValid && !host.TextEntryActive && host.Precision?.BlockGameInput != true &&
-            currentPlacer != null && currentPlacer.currentMovingPart == null;
+            host.ShapeEditor?.BlockInput != true && host.Selection?.BlockInput != true && currentPlacer != null && currentPlacer.currentMovingPart == null && FindProp(currentPlacer.currentSelectedPart) != null;
         internal bool Enabled { get; private set; } = true;
         internal bool HasProp { get; private set; }
         internal int Obstructions { get; private set; }
@@ -57,14 +60,20 @@ namespace Aviassembly.EditorTools
         {
             currentPlacer = placer;
             bool visible = host.InEditor && !GameManager.Instance.modalsOpen && !host.ShortcutsOpen;
-            EnsureUI();
+            if (visible) EnsureUI();
+            var part = placer != null ? placer.currentSelectedPart : null;
             if (buttonRoot != null)
             {
-                buttonRoot.SetActive(visible);
+                var menuTarget = partMenu != null ? (GameObject)AccessTools.Field(typeof(PlacementToolbar), "targetObject").GetValue(partMenu) : null;
+                buttonRoot.SetActive(visible && part != null && FindProp(part) != null && !host.HideParts.IsHidden(part) &&
+                    placer.currentMovingPart == null && menuTarget == part.gameObject);
                 button.interactable = visible && CanToggle;
-                buttonLabel.text = Enabled ? "Prop Check On" : "Prop Check Off";
+                buttonLabel.text = Enabled ? "All Props\nCheck On" : "All Props\nCheck Off";
+                buttonLabel.color = Enabled ? new Color(0.3f, 0.9f, 1f) : Color.white;
+                // Blocking the world click also skips PartPlacer's menu heartbeat.
+                // Keep the existing menu alive throughout a press on our button.
+                KeepMenuAlive(partMenu);
             }
-            var part = placer != null ? placer.currentSelectedPart : null;
             if (!visible || !Enabled || part == null || host.HideParts.IsHidden(part)) { Clear(); return; }
             if (!force && part == lastPart && Time.unscaledTime < nextCheck) return;
             nextCheck = Time.unscaledTime + 0.1f; lastPart = part;
@@ -192,13 +201,33 @@ namespace Aviassembly.EditorTools
         }
         private void EnsureUI()
         {
-            if (buttonRoot != null && textRoot != null) return;
+            if (buttonRoot == null)
+                foreach (var menu in UnityEngine.Object.FindObjectsByType<PlacementToolbar>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+                {
+                    var menuCanvas = menu.GetComponentInParent<Canvas>();
+                    if (menuCanvas == null || !menuCanvas.isActiveAndEnabled || menu.moveButton == null) continue;
+                    partMenu = menu;
+                    buttonRoot = new GameObject("EditorTools Prop Check", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button), typeof(LayoutElement));
+                    buttonRoot.layer = menu.gameObject.layer;
+                    var rect = (RectTransform)buttonRoot.transform; rect.SetParent(menu.moveButton.transform.parent, false);
+                    float height = Mathf.Max(38, ((RectTransform)menu.moveButton.transform).rect.height);
+                    rect.sizeDelta = new Vector2(108, height);
+                    var layout = buttonRoot.GetComponent<LayoutElement>(); layout.preferredWidth = layout.minWidth = 108; layout.preferredHeight = layout.minHeight = height;
+                    var background = buttonRoot.GetComponent<Image>(); background.color = new Color(1, 1, 1, 0.04f);
+                    button = buttonRoot.GetComponent<Button>(); button.targetGraphic = background; button.navigation = new Navigation { mode = Navigation.Mode.None }; button.onClick.AddListener(Toggle);
+                    var text = new GameObject("Label", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI)); text.layer = buttonRoot.layer; text.transform.SetParent(rect, false);
+                    var tr = (RectTransform)text.transform; tr.anchorMin = Vector2.zero; tr.anchorMax = Vector2.one; tr.offsetMin = new Vector2(4, 2); tr.offsetMax = new Vector2(-4, -2);
+                    buttonLabel = text.GetComponent<TextMeshProUGUI>(); buttonLabel.fontSize = 18; buttonLabel.enableAutoSizing = true; buttonLabel.fontSizeMin = 12; buttonLabel.fontSizeMax = 18;
+                    buttonLabel.alignment = TextAlignmentOptions.Center; buttonLabel.raycastTarget = false;
+                    buttonRoot.SetActive(false); break;
+                }
+            if (textRoot != null) { if (buttonLabel != null) buttonLabel.font = label.font; return; }
             foreach (var native in UnityEngine.Object.FindObjectsByType<MirrorButton>(FindObjectsInactive.Include, FindObjectsSortMode.None))
             {
                 var parent = native.GetComponentInParent<Canvas>();
                 if (parent == null || !parent.isActiveAndEnabled || native.text == null || native.text.font == null || native.buttonImage == null) continue;
                 canvas = parent.rootCanvas;
-                buttonRoot = HidePartsUI.CreateButton(native, "EditorTools Prop Check", "Prop Check On", 210, false, Toggle, out button, out buttonLabel, false);
+                if (buttonLabel != null) buttonLabel.font = native.text.font;
                 textRoot = new GameObject("EditorTools prop clearance text", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
                 textRoot.layer = native.gameObject.layer;
                 var rect = (RectTransform)textRoot.transform; rect.SetParent(canvas.transform, false);
@@ -213,6 +242,12 @@ namespace Aviassembly.EditorTools
         }
         internal bool Contains(Vector2 point) => buttonRoot != null && buttonRoot.activeInHierarchy && canvas != null &&
             RectTransformUtility.RectangleContainsScreenPoint((RectTransform)buttonRoot.transform, point, canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera);
+        internal void KeepMenuAlive(PlacementToolbar menu)
+        {
+            if (menu != null && menu == partMenu && CanToggle && Mouse.current != null && Contains(Mouse.current.position.ReadValue()) &&
+                (GameObject)AccessTools.Field(typeof(PlacementToolbar), "targetObject").GetValue(menu) == currentPlacer.currentSelectedPart.gameObject)
+                menu.EnableToolbar(currentPlacer.currentSelectedPart.gameObject);
+        }
         internal void Clear()
         {
             HasProp = false; Obstructions = 0; Gap = float.PositiveInfinity; Readout = ""; lastPart = null;
@@ -231,5 +266,12 @@ namespace Aviassembly.EditorTools
             if (buttonRoot != null) UnityEngine.Object.Destroy(buttonRoot);
             if (textRoot != null) UnityEngine.Object.Destroy(textRoot);
         }
+    }
+    [HarmonyPatch(typeof(PlacementToolbar), "Update")]
+    internal static class PropMenuHeartbeatPatch
+    {
+        // Run before the native menu calculates isEnabled, independent of which
+        // LateUpdate runs first, while world picking is blocked over our button.
+        private static void Prefix(PlacementToolbar __instance) => Plugin.Instance?.Clearance?.KeepMenuAlive(__instance);
     }
 }

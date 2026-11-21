@@ -4,6 +4,7 @@ $env:MSBuildEnableWorkloadResolver = 'false'
 $env:DOTNET_CLI_TELEMETRY_OPTOUT = '1'
 $env:DOTNET_SKIP_FIRST_TIME_EXPERIENCE = '1'
 $env:DOTNET_CLI_HOME = Join-Path $PSScriptRoot '.work\dotnet'
+$GameDir = (Get-Item -LiteralPath $GameDir).FullName
 if (!(Test-Path -LiteralPath (Join-Path $GameDir 'BepInEx\core\BepInEx.dll'))) { throw 'BepInEx 5 is required in GameDir.' }
 Push-Location $PSScriptRoot
 try {

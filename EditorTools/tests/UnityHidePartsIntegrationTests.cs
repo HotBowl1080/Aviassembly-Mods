@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using Aviassembly.EditorTools;
 using HarmonyLib;
@@ -144,14 +145,8 @@ public static class UnityHidePartsIntegrationTests
                 hide.RefreshUI();
                 PointerClick(Get<Button>(ui, "showButton"), "Show All");
                 check(hide.HiddenCount == 0 && renderer.enabled, "Pointer: Show All completes a full press and release");
-                bool xrayBefore = hide.XrayEnabled;
-                PointerClick(Get<Button>(ui, "xrayButton"), "X-ray");
-                check(hide.XrayEnabled != xrayBefore, "Pointer: X-ray toggle completes full press and release");
-                hide.ToggleXray();
-                bool propsBefore = plugin.Clearance.Enabled;
-                PointerClick(Get<Button>(plugin.Clearance, "button"), "Prop Check");
-                check(plugin.Clearance.Enabled != propsBefore, "Pointer: Prop Check toggle completes full press and release");
-                plugin.Clearance.Toggle();
+                check(UnityEngine.Object.FindObjectsByType<Button>(FindObjectsInactive.Include, FindObjectsSortMode.None)
+                    .All(b => b.gameObject.name != "EditorTools X-ray"), "UI: permanent X-ray has no button");
                 InputSystem.QueueStateEvent(Mouse.current, new MouseState()); InputSystem.Update();
             }
             check(!hide.HandleShortcut(KeyCode.H), "Combined: former H shortcut has no action");
@@ -207,8 +202,6 @@ public static class UnityHidePartsIntegrationTests
                 break;
             }
             Add(Get<GameObject>(ui, "hideRoot")); Add(Get<GameObject>(ui, "showRoot"));
-            Add(Get<GameObject>(ui, "xrayRoot"));
-            if (plugin.Clearance != null) Add(Get<GameObject>(plugin.Clearance, "buttonRoot"));
             var focus = Get<object>(plugin, "focusUI");
             if (focus != null) Add(Get<GameObject>(focus, "root"));
             Canvas.ForceUpdateCanvases();

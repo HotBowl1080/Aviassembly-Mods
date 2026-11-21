@@ -22,6 +22,7 @@ namespace Aviassembly.EditorTools
         private readonly HashSet<BuildingPart> seenParts = new HashSet<BuildingPart>();
         internal TransformSnapshot(BuildingPart target, BuildingPart mirror) { AddPart(target); AddPart(mirror); }
         internal TransformSnapshot(IEnumerable<BuildingPart> parts) { foreach (var part in parts) AddPart(part); }
+        internal bool Contains(BuildingPart part) => part != null && seen.Contains(part.transform);
         private void AddPart(BuildingPart part)
         {
             if (part == null || !seenParts.Add(part)) return;
@@ -60,6 +61,8 @@ namespace Aviassembly.EditorTools
     {
         internal bool Active { get; private set; }
         internal BuildingPart Target { get; private set; }
+        internal BuildingPart SelectionAtStart { get; private set; }
+        internal bool Duplicating => Active && Target != SelectionAtStart;
         internal Vector3 StartPosition { get; private set; }
         internal Quaternion StartRotation { get; private set; }
         internal bool Changed { get; private set; }
@@ -70,18 +73,20 @@ namespace Aviassembly.EditorTools
         private Quaternion mirrorStartRotation;
         private GroupTransform group;
         internal bool IsGroup => group != null;
+        internal bool Moves(BuildingPart part) => group?.Moves(part) ?? (original?.Contains(part) == true);
         private static readonly MethodInfo Flush = AccessTools.Method(typeof(PlaneStorage), "ExecuteHistoryUpdate");
-        internal bool Begin(PartPlacer source)
+        internal bool Begin(PartPlacer source, BuildingPart duplicate = null)
         {
             if (Active || source == null || source.currentSelectedPart == null || !source.currentSelectedPart.hasBeenPlaced ||
                 source.currentMovingPart != null || source.partContainer == null || PlaneStorage.Instance == null || DecalContainer.Instance == null) return false;
             placer = source;
-            Target = source.currentSelectedPart;
-            mirror = source.GetMirrorPart(Target);
+            SelectionAtStart = source.currentSelectedPart;
+            Target = duplicate != null ? duplicate : SelectionAtStart;
+            mirror = duplicate == null ? source.GetMirrorPart(Target) : null;
             if (mirror == Target || (mirror != null && (Target.IsChild(mirror) || mirror.IsChild(Target)))) mirror = null;
             // Flush a pending native edit BEFORE any preview. Native history deduplicates.
             Flush.Invoke(PlaneStorage.Instance, null);
-            group = Plugin.Instance?.Selection?.IsGroup == true ? new GroupTransform(source, Plugin.Instance.Selection.Parts) : null;
+            group = duplicate == null && Plugin.Instance?.Selection?.IsGroup == true ? new GroupTransform(source, Plugin.Instance.Selection.Parts) : null;
             if (group != null)
             {
                 StartPosition = group.Pivot; StartRotation = Target.transform.rotation;
@@ -99,7 +104,6 @@ namespace Aviassembly.EditorTools
         {
             if (!Active || Target == null || !TransformMath.Finite(position) ||
                 !TransformMath.Finite(new Vector3(rotation.x, rotation.y, rotation.z)) || !TransformMath.Finite(rotation.w)) return;
-            if (Target.lockRotation) rotation = StartRotation;
             if (group != null)
             {
                 group.Preview(position, rotation * Quaternion.Inverse(StartRotation));
@@ -107,6 +111,7 @@ namespace Aviassembly.EditorTools
                 Changed = (position - StartPosition).sqrMagnitude > 0.0000000001f || Quaternion.Angle(rotation, StartRotation) > 0.00001f;
                 SyncGizmos(); return;
             }
+            if (Target.lockRotation) rotation = StartRotation;
             original.Restore();
             Target.SetPositionAndRotation(position, rotation);
             bool rotationChanged = Quaternion.Angle(rotation, StartRotation) > 0.00001f;
@@ -124,6 +129,7 @@ namespace Aviassembly.EditorTools
         internal bool Commit()
         {
             if (!Active || Target == null) { Cancel(); return false; }
+            if (Duplicating) return CommitDuplicate();
             if (!Changed) { Cancel(); return true; }
             try
             {
@@ -148,15 +154,65 @@ namespace Aviassembly.EditorTools
             }
             catch { Active = true; Cancel(); throw; }
         }
+
+        private bool CommitDuplicate()
+        {
+            var plane = PlaneContainer.Instance;
+            var money = MoneyManager.Instance;
+            float price = Target.GetPrice();
+            if (plane == null || money == null || !money.HasEnoughMoney(price))
+            {
+                Plugin.Instance?.Clipboard.Show("Not enough money to duplicate");
+                Cancel();
+                return false;
+            }
+
+            Active = false;
+            try
+            {
+                Target.transform.SetParent(plane.transform, true);
+                Target.isBasePart = Target.basePart && placer.partContainer.GetBasePartCount() == 0;
+                placer.PlacePart(Target);
+                Physics.SyncTransforms();
+                placer.partContainer.UpdateAttachment(Target);
+                placer.partContainer.UpdateUsedSnapPoints();
+                money.ChangeMoneyAmount(-price);
+            }
+            catch
+            {
+                Target.SetParent(null);
+                Target.transform.SetParent(null, true);
+                placer.partContainer.RemovePart(Target);
+                DiscardDuplicate();
+                original = null;
+                throw;
+            }
+            original = null;
+            Plugin.Instance?.Selection?.Set(new[] { Target }, highlightSelection: false);
+            return true;
+        }
+
         internal void Cancel()
         {
             if (!Active) return;
-            original?.Restore();
-            group?.Restore();
-            Active = false; Changed = false;
+            if (Duplicating) DiscardDuplicate();
+            else
+            {
+                original?.Restore();
+                group?.Restore();
+            }
+            Active = false;
+            Changed = false;
             SyncGizmos();
             original = null;
             group = null;
+        }
+
+        private void DiscardDuplicate()
+        {
+            if (Target == null) return;
+            Target.gameObject.SetActive(false);
+            UnityEngine.Object.Destroy(Target.gameObject);
         }
         private void SyncGizmos()
         {
@@ -172,7 +228,7 @@ namespace Aviassembly.EditorTools
         }
         internal TransformSnapshot BeforeSave()
         {
-            if (!Active) return null;
+            if (!Active || Duplicating) return null;
             if (group != null) return group.BeforeSave();
             var preview = new TransformSnapshot(Target, mirror);
             original.Restore();
