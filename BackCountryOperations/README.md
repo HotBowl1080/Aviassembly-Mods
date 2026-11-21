@@ -1,8 +1,8 @@
 # BackCountry Operations
 
 BackCountry Operations adds bush wings, flap kits, steerable and adjustable
-landing gear, piston engine options, and the Wind Farm runway repair to
-Aviassembly. Version 0.21.2 keeps the campaign on the existing airfields.
+landing gear, piston engine options, and a short early-Career campaign to
+Aviassembly. Version 0.22.0 uses the existing airfields for every contract.
 
 ## Build
 
@@ -31,10 +31,11 @@ cockpit lever, keyboard, and gamepad controls.
 - `BushUtilityWings.cs` owns wing profiles, flap fittings, and the editor controls.
 - `BushLandingGear.cs`, `BushWheelPart.cs`, and `BushGroundHandling.cs` own gear,
   wheel contact, braking, and powered tail lift.
-- `CampaignProgress.cs`, `RoughStripScout.cs`, and `MapJobPanel.cs` own mission
-  progress, delivery checks, and the stock-style airport briefings.
-- `WindFarmWorks.cs` and `InlandClearance.cs` own the existing runway's visuals
-  and nearby scenery. The patch kit's editable SVG is in `Assets`.
+- `CampaignProgress.cs`, `TownContracts.cs`, `RoughStripScout.cs`, and
+  `MapJobPanel.cs` own mission progress, delivery checks, and airport briefings.
+- `WindFarmWorks.cs`, `TownAirfieldWorks.cs`, and `InlandClearance.cs` own
+  runway visuals, delivery bays, and nearby scenery. The patch kit's editable
+  SVG is in `Assets`.
 
 ## In-game check
 
@@ -294,13 +295,23 @@ bay at the Wind Farm. The crate weighs three times as much as the medicine
 and uses the same cargo space. Delivery automatically starts the runway
 repair. The runway upgrade is saved with the Career.
 
-The stock **Delivering Batteries** job follows the opening. **Gear Fit
-Check** is listed under The Farm after that delivery. Land with wheeled gear,
-taxi slowly, then come to a full stop. **Backspace** abandons an active bush
-mission while the map is closed.
+After the repair, finish the first stock **Delivering Batteries** job at
+The Hospital. The town contracts appear under their existing pins and at
+Base. **Load Cargo** at the listed pickup point to begin each cargo job.
+The game tracks the delivery bay as soon as the crate is aboard.
 
-Valley Strip, its contracts, and the checkpoint routes are paused. Utility
-and High-Lift flap kits remain selectable on compatible wings.
+| Contract | What to do | Workshop unlock |
+| --- | --- | --- |
+| Clear the Maplewood drains | Take a Drainage Kit from Base and stop in Maplewood's marked bay. The kit weighs 0.48 and uses 15 cargo space. | Utility flaps |
+| Bring the worn pump home | After the drains are cleared, pick up the Worn Pump at Maplewood and stop in the marked bay at Base. It weighs 1.5 and uses 15 cargo space. | High-Lift flaps |
+| Gear Fit Check | Take the optional job under The Farm. Fly in on wheeled gear, taxi slowly, and hold a stop for three seconds. Press **Backspace** to abandon the check with the map closed. | Balloon tires |
+
+Maplewood and Spring Hills have dirt surfaces on their stock runways.
+Maplewood's gravel delivery bay also receives a visual upgrade after the
+drainage delivery. Career saves keep completed deliveries, unlocks, and
+mission cargo. Keep the `.plane.backcountry` file beside its matching
+`.plane` save when moving a Career. Sandbox and unlock-all modes allow all
+fittings from the start.
 
 ### Workshop and flight
 

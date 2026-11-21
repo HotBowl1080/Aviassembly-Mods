@@ -56,15 +56,24 @@ namespace MachWorks.BackCountryOperations
 
         internal static Vector3 ServiceBay(Airport wind)
         {
+            return TryRunwayPoint(wind, ServiceOffset, out var point) ? point : wind.position;
+        }
+
+        internal static bool TryRunwayPoint(Airport airport, Vector3 runwayLocal, out Vector3 point)
+        {
+            point = default;
             var manager = AirportManager.Instance;
-            var prefab = wind.data.airportPrefab.transform;
-            var runway = prefab.GetComponentInChildren<RunwayGenerator>(true).transform;
-            var offset = prefab.InverseTransformPoint(runway.TransformPoint(ServiceOffset));
+            var prefab = airport?.data?.airportPrefab;
+            var runway = prefab ? prefab.GetComponentInChildren<RunwayGenerator>(true) : null;
+            if (!manager || !runway)
+                return false;
+            var offset = prefab.transform.InverseTransformPoint(runway.transform.TransformPoint(runwayLocal));
             var generation = TerrainGenerationManager.Instance;
-            var origin = wind.position;
+            var origin = airport.position;
             if (generation)
                 origin.y = Mathf.Max(-8f, generation.GetTerrainHeight(origin, generation.continentFalloff));
-            return origin + manager.GetAirportRotation(wind) * offset;
+            point = origin + manager.GetAirportRotation(airport) * offset;
+            return true;
         }
 
         internal static bool HoldStockQuest(Quest quest)

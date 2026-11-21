@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using BepInEx.Logging;
@@ -14,24 +15,33 @@ namespace MachWorks.BackCountryOperations
         FirstSupply = 1,
         LoadedSupply = 2,
         WindRunwayRepair = 16,
-        All = FirstSupply | LoadedSupply | WindRunwayRepair,
+        FarmGearCheck = 32,
+        MaplewoodDrains = 64,
+        PumpReturn = 128,
+        All = FirstSupply | LoadedSupply | WindRunwayRepair | FarmGearCheck | MaplewoodDrains | PumpReturn,
     }
 
     internal sealed class CampaignProgress : IDisposable
     {
         internal const string RepairCargoName = "Runway Patch Kit";
+        // Keep these bits above the milestone flags so older mod versions can still read progress.
+        private const int CarryingPatchKit = 1 << 8;
+        private const int CarryingDrainageKit = 1 << 9;
+        private const int CarryingWornPump = 1 << 10;
+        private static readonly AccessTools.FieldRef<CargoInventory, Dictionary<CargoType, int>> InventoryEntries =
+            AccessTools.FieldRefAccess<CargoInventory, Dictionary<CargoType, int>>("currentCargo");
+        private static readonly AccessTools.FieldRef<CargoInventory, float> InventoryVolume =
+            AccessTools.FieldRefAccess<CargoInventory, float>("<CurrentVolume>k__BackingField");
         private readonly Harmony harmony = new Harmony(BackCountryOperationsPlugin.PluginId + ".valleycareer");
         private readonly ManualLogSource log;
-        private readonly bool valleyJobs;
         private static CampaignProgress current;
         private ValleyProgress completed;
-        private CargoType valleyCargo, repairSupplies;
+        private CargoType valleyCargo, repairSupplies, drainageKit, wornPump;
         private Texture2D repairIcon;
 
-        internal CampaignProgress(ManualLogSource log, bool valleyJobs = true)
+        internal CampaignProgress(ManualLogSource log)
         {
             this.log = log;
-            this.valleyJobs = valleyJobs;
             try
             {
                 harmony.Patch(AccessTools.DeclaredMethod(typeof(GameManager), nameof(GameManager.StartGame)),
@@ -49,19 +59,20 @@ namespace MachWorks.BackCountryOperations
                 harmony.Patch(AccessTools.DeclaredMethod(typeof(QuestFeedbackManager), nameof(QuestFeedbackManager.SelectQuest)),
                     prefix: new HarmonyMethod(typeof(CampaignProgress), nameof(AllowStockSelection)));
                 harmony.Patch(AccessTools.DeclaredMethod(typeof(CargoInventoryUI), "Update"),
-                    prefix: new HarmonyMethod(typeof(CampaignProgress), nameof(OfferRepairCargo)),
+                    prefix: new HarmonyMethod(typeof(CampaignProgress), nameof(ShowCargoOffers)),
                     finalizer: new HarmonyMethod(typeof(CampaignProgress), nameof(RestoreAirportCargo)));
                 harmony.Patch(AccessTools.DeclaredMethod(typeof(AirportInspector), nameof(AirportInspector.SetAirport)),
-                    prefix: new HarmonyMethod(typeof(CampaignProgress), nameof(ShowBaseCargoButton)),
+                    prefix: new HarmonyMethod(typeof(CampaignProgress), nameof(ShowMissionCargoButton)),
                     finalizer: new HarmonyMethod(typeof(CampaignProgress), nameof(RestoreAirportCargo)));
                 harmony.Patch(AccessTools.DeclaredMethod(typeof(CargoInventory), nameof(CargoInventory.AddCargo)),
-                    prefix: new HarmonyMethod(typeof(CampaignProgress), nameof(AllowRepairPickup)));
+                    prefix: new HarmonyMethod(typeof(CampaignProgress), nameof(AllowMissionPickup)),
+                    postfix: new HarmonyMethod(typeof(CampaignProgress), nameof(TrackTownPickup)));
                 current = this;
             }
             catch (Exception error)
             {
                 harmony.UnpatchSelf();
-                log.LogWarning($"Valley mission progress could not hook the native save: {error.Message}");
+                log.LogWarning($"Campaign integration could not initialize: {error.Message}");
             }
         }
 
@@ -74,43 +85,55 @@ namespace MachWorks.BackCountryOperations
         private static bool AllowStockOffer(Quest __0) => !OpeningAirfields.HoldStockQuest(__0);
         private static bool AllowStockSelection(Quest __0) => !OpeningAirfields.HoldStockQuest(__0);
 
-        private static void OfferRepairCargo(bool ___airportUI, out (Airport Airport, CargoType[] Stock) __state)
+        private static void ShowCargoOffers(bool ___airportUI, out (Airport Airport, CargoType[] Stock) __state)
         {
             __state = default;
-            if (!___airportUI || !OpeningAirfields.CareerOpening || IsDone(ValleyProgress.WindRunwayRepair))
+            if (!___airportUI || !OpeningAirfields.CareerOpening)
                 return;
 
             var manager = AirportManager.Instance;
             var plane = PlaneContainer.Instance;
-            var home = manager ? manager.GetHomeBase() : null;
-            if (home == null || !plane || !plane.IsAtAirport() || !OpeningAirfields.AtAirport(home, plane.transform.position))
+            if (!manager || !plane || !plane.IsAtAirport())
                 return;
-            __state = AddRepairOffer(manager, home);
+            var airport = manager.GetClosestAirport(plane.transform.position);
+            if (airport != null && OpeningAirfields.AtAirport(airport, plane.transform.position))
+                __state = AddMissionOffer(manager, airport);
         }
 
-        private static void ShowBaseCargoButton(Airport __0, out (Airport Airport, CargoType[] Stock) __state)
+        private static void ShowMissionCargoButton(Airport __0, out (Airport Airport, CargoType[] Stock) __state)
         {
             var manager = AirportManager.Instance;
-            __state = manager && __0 != null && __0 == manager.GetHomeBase() && OpeningAirfields.CareerOpening &&
-                !IsDone(ValleyProgress.WindRunwayRepair) ? AddRepairOffer(manager, __0) : default;
+            __state = manager && __0 != null && OpeningAirfields.CareerOpening
+                ? AddMissionOffer(manager, __0) : default;
         }
 
-        private static (Airport Airport, CargoType[] Stock) AddRepairOffer(AirportManager manager, Airport home)
+        private static (Airport Airport, CargoType[] Stock) AddMissionOffer(AirportManager manager, Airport airport)
         {
-            var cargo = OpeningAirfields.RepairCargo(manager);
+            CargoType cargo = null;
+            if (airport == manager.GetHomeBase())
+            {
+                if (!IsDone(ValleyProgress.WindRunwayRepair))
+                    cargo = OpeningAirfields.RepairCargo(manager);
+                else if (TownContracts.IsOffered(RoughStripScout.MaplewoodDrainsJob))
+                    cargo = TownContracts.Cargo(manager, RoughStripScout.MaplewoodDrainsJob);
+            }
+            else if (OpeningAirfields.Matches(airport, TownContracts.MaplewoodPosition) &&
+                TownContracts.IsOffered(RoughStripScout.PumpReturnJob))
+                cargo = TownContracts.Cargo(manager, RoughStripScout.PumpReturnJob);
+
             var inventory = CargoInventory.Instance;
             if (!cargo || !inventory || inventory.GetCargoCount(cargo) != 0)
                 return default;
 
-            var stock = home.cargoType;
+            var stock = airport.cargoType;
             if (stock != null && Array.IndexOf(stock, cargo) >= 0)
                 return default;
             var offers = new CargoType[(stock?.Length ?? 0) + 1];
             offers[0] = cargo;
             if (stock != null)
                 Array.Copy(stock, 0, offers, 1, stock.Length);
-            home.cargoType = offers;
-            return (home, stock);
+            airport.cargoType = offers;
+            return (airport, stock);
         }
 
         private static void RestoreAirportCargo((Airport Airport, CargoType[] Stock) __state)
@@ -119,15 +142,32 @@ namespace MachWorks.BackCountryOperations
                 __state.Airport.cargoType = __state.Stock;
         }
 
-        private static bool AllowRepairPickup(CargoInventory __instance, CargoType __0)
+        private static bool AllowMissionPickup(CargoInventory __instance, CargoType __0)
         {
-            if (!__0 || current?.repairSupplies != __0)
+            if (!__0 || current == null)
                 return true;
+            bool isRepair = __0 == current.repairSupplies;
+            int townIndex = TownPickupIndex(__0);
+            if (!isRepair && townIndex < 0)
+                return true;
+            if (!OpeningAirfields.CareerOpening || __instance.GetCargoCount(__0) != 0 ||
+                (isRepair ? IsDone(ValleyProgress.WindRunwayRepair) : !TownContracts.IsOffered(townIndex)))
+                return false;
             var plane = PlaneContainer.Instance;
             var manager = AirportManager.Instance;
-            var home = manager ? manager.GetHomeBase() : null;
-            return home != null && plane && plane.IsAtAirport() && !IsDone(ValleyProgress.WindRunwayRepair) &&
-                __instance.GetCargoCount(__0) == 0 && OpeningAirfields.AtAirport(home, plane.transform.position);
+            var pickup = manager ? isRepair ? manager.GetHomeBase() : TownContracts.Pickup(manager, townIndex) : null;
+            return pickup != null && plane && plane.IsAtAirport() && OpeningAirfields.AtAirport(pickup, plane.transform.position);
+        }
+
+        private static int TownPickupIndex(CargoType cargo) => current == null || !cargo ? -1 :
+            cargo == current.drainageKit ? RoughStripScout.MaplewoodDrainsJob :
+            cargo == current.wornPump ? RoughStripScout.PumpReturnJob : -1;
+
+        private static void TrackTownPickup(CargoInventory __instance, CargoType __0, bool __runOriginal)
+        {
+            int index = TownPickupIndex(__0);
+            if (__runOriginal && index >= 0 && __instance.GetCargoCount(__0) == 1 && TownContracts.IsOffered(index))
+                TownContracts.Track(AirportManager.Instance, index);
         }
 
         internal static void Complete(ValleyProgress milestone)
@@ -162,6 +202,21 @@ namespace MachWorks.BackCountryOperations
             return current.repairSupplies;
         }
 
+        internal static CargoType TownCargo(CargoType template, bool drainage)
+        {
+            if (current == null || !template)
+                return null;
+            ref CargoType cargo = ref (drainage ? ref current.drainageKit : ref current.wornPump);
+            if (!cargo)
+            {
+                string name = drainage ? "Drainage Kit" : "Worn Pump";
+                cargo = MakeCargo(template, name, drainage ? .8f : 2.5f);
+                cargo.name = name;
+                cargo.cargoSpace = 15;
+            }
+            return cargo;
+        }
+
         private static Texture2D LoadRepairIcon()
         {
             using var stream = typeof(CampaignProgress).Assembly.GetManifestResourceStream("BackCountryOperations.RunwayPatchKit.png");
@@ -190,8 +245,7 @@ namespace MachWorks.BackCountryOperations
             return cargo;
         }
 
-        // Active jobs reset when a save is loaded. Write the native inventory format with only
-        // stock cargo records while leaving the aircraft's live cargo, space and weight untouched.
+        // Keep the stock inventory format readable without the mod. The sidecar records mission cargo.
         private static bool SaveStockCargo(CargoInventory __instance, GameDataWriter __0)
         {
             if (current == null)
@@ -209,6 +263,8 @@ namespace MachWorks.BackCountryOperations
             }
             bool removed = RemoveReserved(current.valleyCargo);
             removed |= RemoveReserved(current.repairSupplies);
+            removed |= RemoveReserved(current.drainageKit);
+            removed |= RemoveReserved(current.wornPump);
             if (!removed)
                 return true;
 
@@ -224,16 +280,21 @@ namespace MachWorks.BackCountryOperations
 
         internal static bool CanFit(BushFlapKit kit)
         {
-            if (kit == BushFlapKit.None || current == null || !current.valleyJobs)
+            if (kit == BushFlapKit.None || !UsesBlueprints())
                 return true;
+            return kit == BushFlapKit.Utility
+                ? IsDone(ValleyProgress.MaplewoodDrains) || IsDone(ValleyProgress.FirstSupply)
+                : IsDone(ValleyProgress.PumpReturn) || IsDone(ValleyProgress.LoadedSupply);
+        }
+
+        internal static bool CanFitBalloon => !UsesBlueprints() || IsDone(ValleyProgress.FarmGearCheck);
+
+        private static bool UsesBlueprints()
+        {
             var mode = GameManager.Instance?.gameModeData;
             var world = ContinentManager.Instance?.worldAsset;
-            if (mode == null || mode.creativeMode || mode.disableAirports || mode.unlockAll ||
-                (world && (world.name != "LocalizedVersion" || world.versionStartingFrom != 24)))
-                return true;
-
-            // In the workshop the world can be unloaded, but the current Career's saved flags still apply.
-            return IsDone(kit == BushFlapKit.Utility ? ValleyProgress.FirstSupply : ValleyProgress.LoadedSupply);
+            return current != null && mode != null && !mode.creativeMode && !mode.disableAirports && !mode.unlockAll &&
+                (!world || OpeningAirfields.IsSupported(world));
         }
 
         private static void NewCareer() => current.completed = ValleyProgress.None;
@@ -250,9 +311,20 @@ namespace MachWorks.BackCountryOperations
             var temporary = path + ".tmp";
             try
             {
-                if (current.completed == ValleyProgress.None && !File.Exists(path))
+                int flags = (int)current.completed;
+                var inventory = CargoInventory.Instance;
+                if (inventory)
+                {
+                    if (inventory.GetCargoCount(current.repairSupplies) > 0)
+                        flags |= CarryingPatchKit;
+                    if (inventory.GetCargoCount(current.drainageKit) > 0)
+                        flags |= CarryingDrainageKit;
+                    if (inventory.GetCargoCount(current.wornPump) > 0)
+                        flags |= CarryingWornPump;
+                }
+                if (flags == 0 && !File.Exists(path))
                     return;
-                File.WriteAllText(temporary, ((int)current.completed).ToString(CultureInfo.InvariantCulture));
+                File.WriteAllText(temporary, flags.ToString(CultureInfo.InvariantCulture));
                 if (File.Exists(path))
                     File.Replace(temporary, path, null);
                 else
@@ -260,7 +332,7 @@ namespace MachWorks.BackCountryOperations
             }
             catch (Exception error) when (error is IOException || error is UnauthorizedAccessException)
             {
-                current.log.LogWarning($"Could not save Valley mission progress: {error.Message}");
+                current.log.LogWarning($"Could not save BackCountry mission progress: {error.Message}");
             }
         }
 
@@ -275,12 +347,37 @@ namespace MachWorks.BackCountryOperations
                 var path = Sidecar(__instance, __0);
                 if (File.Exists(path) && int.TryParse(File.ReadAllText(path), NumberStyles.None,
                     CultureInfo.InvariantCulture, out int flags))
+                {
                     current.completed = (ValleyProgress)flags & ValleyProgress.All;
+                    RestoreCargo(flags);
+                }
             }
             catch (Exception error) when (error is IOException || error is UnauthorizedAccessException)
             {
-                current.log.LogWarning($"Could not load Valley mission progress: {error.Message}");
+                current.log.LogWarning($"Could not load BackCountry mission progress: {error.Message}");
             }
+        }
+
+        private static void RestoreCargo(int flags)
+        {
+            const int cargoFlags = CarryingPatchKit | CarryingDrainageKit | CarryingWornPump;
+            var inventory = CargoInventory.Instance;
+            var airports = AirportManager.Instance;
+            if ((flags & cargoFlags) == 0 || !inventory || !airports)
+                return;
+
+            CargoType cargo = null;
+            if ((flags & CarryingPatchKit) != 0 && !IsDone(ValleyProgress.WindRunwayRepair))
+                cargo = OpeningAirfields.RepairCargo(airports);
+            else if ((flags & CarryingDrainageKit) != 0 && !IsDone(ValleyProgress.MaplewoodDrains))
+                cargo = TownContracts.Cargo(airports, RoughStripScout.MaplewoodDrainsJob);
+            else if ((flags & CarryingWornPump) != 0 && !IsDone(ValleyProgress.PumpReturn))
+                cargo = TownContracts.Cargo(airports, RoughStripScout.PumpReturnJob);
+            if (!cargo || inventory.GetCargoCount(cargo) > 0)
+                return;
+            InventoryEntries(inventory)[cargo] = 1;
+            InventoryVolume(inventory) += cargo.cargoSpace;
+            // Native flight initialization applies the restored inventory's mass.
         }
 
         public void Dispose()
@@ -290,6 +387,10 @@ namespace MachWorks.BackCountryOperations
                 UnityEngine.Object.Destroy(valleyCargo);
             if (repairSupplies)
                 UnityEngine.Object.Destroy(repairSupplies);
+            if (drainageKit)
+                UnityEngine.Object.Destroy(drainageKit);
+            if (wornPump)
+                UnityEngine.Object.Destroy(wornPump);
             if (repairIcon)
                 UnityEngine.Object.Destroy(repairIcon);
             if (current == this)

@@ -17,9 +17,11 @@ namespace MachWorks.BackCountryOperations
             "Fly through three coastal checkpoints, then return to Base.",
             "Land and stop at Valley Strip, then fly back to Base.",
             "Load one crate at Base and unload at Valley Strip to unlock Utility flaps.",
-            "Land at The Farm with wheeled gear, taxi slowly, then stop for three seconds.",
+            "Land at The Farm with wheeled gear, taxi slowly, then stop for three seconds. Unlocks balloon tires.",
             "Take two crates to Valley Strip to unlock High-lift flaps.",
-            "Load 1 " + CampaignProgress.RepairCargoName + " at Base. Stop in the marked service bay here."
+            "Load 1 " + CampaignProgress.RepairCargoName + " at Base. Stop in the marked service bay here.",
+            "Rain has washed out the parking bay. Load a Drainage Kit at Base and park in Maplewood's marked bay.",
+            "The crew has pulled the broken pump. Load it at Maplewood and park in the marked bay at Base."
         };
         private static MapJobPanel current;
         private readonly Harmony harmony = new Harmony(BackCountryOperationsPlugin.PluginId + ".runwaycontracts");
@@ -144,9 +146,19 @@ namespace MachWorks.BackCountryOperations
         private bool HasOffers(Airport airport)
         {
             for (int i = 0; i < Briefings.Length; i++)
-                if (Host(i) == airport && Offered(i))
+                if (MatchesHost(i, airport) && Offered(i))
                     return true;
             return false;
+        }
+
+        private bool MatchesHost(int index, Airport airport)
+        {
+            if (airport == null)
+                return false;
+            if (!TownContracts.IsTownJob(index))
+                return Host(index) == airport;
+            var manager = AirportManager.Instance;
+            return airport == TownContracts.Pickup(manager, index) || airport == TownContracts.Destination(manager, index);
         }
 
         private string Blocked(int index)
@@ -167,6 +179,13 @@ namespace MachWorks.BackCountryOperations
             if (IsActive(index))
                 return flight.CargoActionQueued ? "Close the map to finish the transfer." : flight.Status;
             string description = Blocked(index) ?? Briefings[index];
+            if (TownContracts.IsTownJob(index))
+            {
+                var cargo = TownContracts.Cargo(AirportManager.Instance, index);
+                if (cargo)
+                    description += $" {cargo.weight:0.##} weight · {cargo.cargoSpace} cargo space.";
+                return description + " Unlocks " + TownContracts.Reward(index) + ".";
+            }
             if (index == RoughStripScout.RepairJob)
             {
                 var source = OpeningAirfields.MedicineTemplate(hospital);
@@ -184,6 +203,8 @@ namespace MachWorks.BackCountryOperations
         {
             if (index == RoughStripScout.RepairJob)
                 return "";
+            if (TownContracts.IsTownJob(index))
+                return TownContracts.HasCargo(AirportManager.Instance, index) ? "Track" : "";
             if (IsActive(index))
                 return flight.CanLoad ? "Load cargo" : flight.CanUnload ? "Unload cargo" : "Track";
             return flight.Active || Blocked(index) != null ? "" : "Start";
@@ -233,7 +254,7 @@ namespace MachWorks.BackCountryOperations
             var rect = (RectTransform)contract.transform;
             var signature = new StringBuilder();
             for (int i = 0; i < Briefings.Length; i++)
-                if (Host(i) == site && Offered(i))
+                if (MatchesHost(i, site) && Offered(i))
                     signature.Append(i).Append(Describe(i)).Append(ActionFor(i)).Append('\n');
             var value = signature.ToString();
             if (value == rendered)
@@ -255,7 +276,7 @@ namespace MachWorks.BackCountryOperations
             float height = 0f;
             for (int i = 0; i < Briefings.Length; i++)
             {
-                if (Host(i) != site || !Offered(i))
+                if (!MatchesHost(i, site) || !Offered(i))
                     continue;
                 int index = i;
                 var line = (RectTransform)Object.Instantiate(contract.childQuestPrefab, rows, false).transform;
@@ -277,6 +298,9 @@ namespace MachWorks.BackCountryOperations
                 float width = line.sizeDelta.x - left - 14f;
                 native.header.text = i == RoughStripScout.RepairJob ? "Repair the runway" : line.name;
                 native.header.alignment = TextAlignmentOptions.MidlineLeft;
+                native.header.enableAutoSizing = true;
+                native.header.fontSizeMin = 16f;
+                native.header.fontSizeMax = native.header.fontSize;
                 WorkshopSettingsUi.Place(native.header.rectTransform, left, 6f, width, 34f);
                 var description = Text(contract.description, line, Describe(i), left, 40f, width, 42f, 20f);
                 float body = description.GetPreferredValues(description.text, width, 0f).y;
@@ -302,6 +326,8 @@ namespace MachWorks.BackCountryOperations
         {
             if (index == RoughStripScout.RepairJob)
                 return OpeningAirfields.RepairCargo(AirportManager.Instance)?.icon;
+            if (TownContracts.IsTownJob(index))
+                return TownContracts.Cargo(AirportManager.Instance, index)?.icon;
             return RoughStripScout.IsFreightJob(index) ? freightCargo?.icon : null;
         }
 
@@ -332,6 +358,11 @@ namespace MachWorks.BackCountryOperations
         {
             if (!Offered(index))
                 return;
+            if (TownContracts.IsTownJob(index))
+            {
+                TownContracts.Track(AirportManager.Instance, index);
+                return;
+            }
 
             failedJob = -1;
             if (IsActive(index))

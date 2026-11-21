@@ -11,7 +11,7 @@ namespace MachWorks.BackCountryOperations
     {
         public const string PluginId = "com.machworks.backcountryoperations";
         public const string PluginName = "BackCountry Operations";
-        public const string PluginVersion = "0.21.2";
+        public const string PluginVersion = "0.22.0";
 
         private ConfigEntry<bool> diagnosticsEnabled;
         private SceneryProbe sceneryProbe;
@@ -51,7 +51,7 @@ namespace MachWorks.BackCountryOperations
 
             if (scoutEnabled)
             {
-                campaignProgress = new CampaignProgress(Logger, valleyJobs: false);
+                campaignProgress = new CampaignProgress(Logger);
                 gameObject.AddComponent<RoughStripScout>().Initialize(Logger, valleyEnabled: false);
             }
         }

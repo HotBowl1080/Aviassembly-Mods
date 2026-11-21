@@ -26,11 +26,13 @@ namespace MachWorks.BackCountryOperations
         internal const int GearFitJob = 5;
         internal const int LoadedFreightJob = 6;
         internal const int RepairJob = 7;
+        internal const int MaplewoodDrainsJob = 8;
+        internal const int PumpReturnJob = 9;
         internal static readonly string[] JobNames =
         {
             "Inland Flyover", "Valley Recon", "Coastal Patrol", "Rough-Strip Survey",
-            "Valley Supply Trial", "Gear Fit Check", "Loaded Short-Field Run",
-            "Repair the Wind Farm Runway",
+            "Valley Supply Trial", TownContracts.FarmCheckName, "Loaded Short-Field Run",
+            "Repair the Wind Farm Runway", TownContracts.DrainageName, TownContracts.PumpName,
         };
         internal static readonly Vector3[][] Routes =
         {
@@ -71,6 +73,7 @@ namespace MachWorks.BackCountryOperations
         private bool allowValley;
         private CargoType supplyCargo;
         private Airport hospital, wind;
+        private bool restoreTownTracking;
         private bool scoutingLumbercamp;
         private bool lumbercampSurveyed;
         private Vector3 lumbercampOrigin;
@@ -120,6 +123,8 @@ namespace MachWorks.BackCountryOperations
                     exportedBlockerCount = int.MaxValue;
                     surveyFlight.ClearCareer();
                     mapJobs.Reset();
+                    TownContracts.ClearTracking();
+                    restoreTownTracking = true;
                 }
 
                 career = game != null && game.gameModeData != null &&
@@ -130,6 +135,7 @@ namespace MachWorks.BackCountryOperations
                     hospital = OpeningAirfields.Find(airports, OpeningAirfields.HospitalPosition);
                     wind = OpeningAirfields.Find(airports, OpeningAirfields.WindPosition);
                     WindFarmWorks.Prepare(wind);
+                    TownAirfieldWorks.Prepare(airports);
                     var delivery = HospitalMilestone.FindFirstDelivery(airports);
                     if (delivery?.completed == true && !firstDeliveryComplete)
                         logger.LogInfo($"Battery delivery recognized from native Hospital quest {delivery.questID}.");
@@ -175,6 +181,8 @@ namespace MachWorks.BackCountryOperations
                 QuestAdditionUI.Instance?.DisplayText("Patch kit received. We'll start the runway repairs now.", MessageType.Misc, null);
                 logger.LogInfo("Wind Farm runway repair crate delivered from Base.");
             }
+            if (career && LaterJobsReady)
+                UpdateTownDeliveries();
             if (searching)
                 SearchBatch();
         }
@@ -194,7 +202,8 @@ namespace MachWorks.BackCountryOperations
 
         internal static bool ShowJob(int index, bool career, bool firstDeliveryComplete) => index == RepairJob ?
             career && CampaignProgress.Available && !CampaignProgress.IsDone(ValleyProgress.WindRunwayRepair) :
-            index == GearFitJob && career && firstDeliveryComplete;
+            TownContracts.IsTownJob(index) ? career && firstDeliveryComplete && TownContracts.IsOffered(index) :
+            index == GearFitJob && career && firstDeliveryComplete && !CampaignProgress.IsDone(ValleyProgress.FarmGearCheck);
 
         private void LateUpdate()
         {
@@ -213,7 +222,8 @@ namespace MachWorks.BackCountryOperations
 
         private bool TryAcceptJob(int selection)
         {
-            if (selection == RepairJob || !ShowJob(selection, career, LaterJobsReady) || surveyFlight.Active || (selection == StripJob && !CanFlyStrip) ||
+            if (selection == RepairJob || TownContracts.IsTownJob(selection) || !ShowJob(selection, career, LaterJobsReady) ||
+                surveyFlight.Active || (selection == StripJob && !CanFlyStrip) ||
                 (IsFreightJob(selection) && (!CanFlyFreight || CampaignProgress.IsDone(FreightMilestone(selection)))) ||
                 (selection == GearFitJob && !(career && LaterJobsReady)))
                 return false;
@@ -221,8 +231,35 @@ namespace MachWorks.BackCountryOperations
                 return surveyFlight.Accept(JobNames[selection], Routes[selection], supplyCargo, valley.CargoBay.Value,
                     freightUnits: FreightAmount(selection), milestone: FreightMilestone(selection));
             if (selection == GearFitJob)
-                return surveyFlight.Accept(JobNames[selection], Routes[selection], gearFitCheck: true);
+                return surveyFlight.Accept(JobNames[selection], Routes[selection], gearFitCheck: true,
+                    milestone: ValleyProgress.FarmGearCheck);
             return surveyFlight.Accept(JobNames[selection], Routes[selection]);
+        }
+
+        private void UpdateTownDeliveries()
+        {
+            var plane = PlaneContainer.Instance;
+            var airports = AirportManager.Instance;
+            if (restoreTownTracking && plane && plane.FlightModeInitialized && QuestFeedbackManager.Instance)
+            {
+                restoreTownTracking = false;
+                if (QuestFeedbackManager.Instance.currentQuest == null)
+                {
+                    if (!TownContracts.Track(airports, MaplewoodDrainsJob))
+                        TownContracts.Track(airports, PumpReturnJob);
+                }
+            }
+            if (TownContracts.Deliver(plane, airports, MaplewoodDrainsJob))
+            {
+                QuestAdditionUI.Instance?.DisplayText("Maplewood: The drain kit is here. We'll clear the ditch and grade the parking bay. Utility flaps are available in the workshop.", MessageType.Misc, null);
+                logger.LogInfo("Maplewood drainage kit delivered. Utility flaps unlocked.");
+            }
+            if (TownContracts.Deliver(plane, airports, PumpReturnJob))
+            {
+                QuestAdditionUI.Instance?.DisplayText("Base: The old pump is back in the shop. The high-lift flap drawings are ready in your workshop.", MessageType.Misc, null);
+                logger.LogInfo("Worn pump returned to Base. High-Lift flaps unlocked.");
+            }
+            TownContracts.CheckTracking(airports);
         }
 
         private static bool TryDeliverWindRepair(PlaneContainer plane, Airport wind)

@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
-    <Version>0.21.2</Version>
+    <Version>0.22.0</Version>
     <AviassemblyDir Condition="'$(AviassemblyDir)' == '' And Exists('C:/Program Files (x86)/Steam/steamapps/common/Aviassembly/Aviassembly.exe')">C:/Program Files (x86)/Steam/steamapps/common/Aviassembly</AviassemblyDir>
     <AviassemblyDir Condition="'$(AviassemblyDir)' == ''">E:/SteamLibrary/steamapps/common/Aviassembly</AviassemblyDir>
     <GameManagedDir>$(AviassemblyDir)/Aviassembly_Data/Managed</GameManagedDir>

@@ -578,8 +578,8 @@ namespace MachWorks.BackCountryOperations
             bool highLift = CampaignProgress.CanFit(BushFlapKit.HighLift);
             WorkshopSettingsUi.SetCheckbox(utilityFlaps, flap.Kit == BushFlapKit.Utility, utility || flap.Kit == BushFlapKit.Utility);
             WorkshopSettingsUi.SetCheckbox(highLiftFlaps, flap.Kit == BushFlapKit.HighLift, highLift || flap.Kit == BushFlapKit.HighLift);
-            guidance.text = !utility ? "Valley Supply Trial unlocks Utility flaps." :
-                !highLift ? "Loaded Short-Field Run unlocks High-lift flaps." : "";
+            guidance.text = !utility ? "Deliver the Drainage Kit to Maplewood to unlock Utility flaps." :
+                !highLift ? "Return the worn pump to Base to unlock High-Lift flaps." : "";
             ((RectTransform)transform).sizeDelta = new Vector2(WorkshopSettingsUi.Width, highLift ? 85f : 130f);
         }
     }

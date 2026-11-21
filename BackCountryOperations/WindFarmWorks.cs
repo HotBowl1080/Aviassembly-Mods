@@ -493,7 +493,7 @@ namespace MachWorks.BackCountryOperations
             return material;
         }
 
-        private static GameObject Box(Transform parent, string name, Vector3 position, Vector3 scale, Material material)
+        internal static GameObject Box(Transform parent, string name, Vector3 position, Vector3 scale, Material material)
         {
             var piece = GameObject.CreatePrimitive(PrimitiveType.Cube);
             piece.name = name;

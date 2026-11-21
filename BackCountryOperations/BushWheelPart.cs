@@ -477,10 +477,8 @@ namespace MachWorks.BackCountryOperations
         private void SetTire(bool large)
         {
             var matching = FindMatchingWheel();
-            if (!CanChangeSettings(matching))
+            if (!CanChangeSettings(matching) || (large && !CampaignProgress.CanFitBalloon))
                 return;
-
-
             wheel.SetLarge(large);
             if (matching)
                 matching.SetLarge(large);
@@ -548,11 +546,13 @@ namespace MachWorks.BackCountryOperations
         private void UpdateLabels()
         {
             bool editable = CanChangeSettings(FindMatchingWheel());
+            bool balloonAvailable = CampaignProgress.CanFitBalloon;
             if (tires)
-                WorkshopSettingsUi.SetCheckbox(tires, wheel.Large, editable);
+                WorkshopSettingsUi.SetCheckbox(tires, wheel.Large, editable && (wheel.Large || balloonAvailable));
             WorkshopSettingsUi.SetCheckbox(steering, wheel.Steerable, editable);
-            status.text = editable ? "" : "Remove the attached tire to change settings.";
-            float height = -status.rectTransform.anchoredPosition.y + (editable ? 0f : 46f);
+            status.text = !editable ? "Remove the attached tire to change settings." :
+                tires && !wheel.Large && !balloonAvailable ? "Complete Gear Fit Check at The Farm to fit balloon tires." : "";
+            float height = -status.rectTransform.anchoredPosition.y + (status.text.Length == 0 ? 0f : 46f);
             ((RectTransform)transform).sizeDelta = new Vector2(WorkshopSettingsUi.Width, height);
         }
 

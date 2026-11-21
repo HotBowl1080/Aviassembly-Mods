@@ -180,7 +180,7 @@ namespace MachWorks.BackCountryOperations
             }
             if (IsGearFitCheck)
             {
-                UpdateGearFit(position, body, grounded);
+                UpdateGearFit(position, body, grounded, Time.time);
                 return;
             }
             if (stage == Stage.Return && !grounded)
@@ -239,7 +239,7 @@ namespace MachWorks.BackCountryOperations
             }
         }
 
-        private void UpdateGearFit(Vector3 position, Rigidbody body, bool grounded)
+        private void UpdateGearFit(Vector3 position, Rigidbody body, bool grounded, float now)
         {
             if (!grounded)
                 flewToFarm = true;
@@ -267,8 +267,8 @@ namespace MachWorks.BackCountryOperations
 
             Status = "At The Farm. Hold a full stop for three seconds.";
             if (stoppedSince < 0f)
-                stoppedSince = Time.time;
-            if (Time.time - stoppedSince >= HoldSeconds)
+                stoppedSince = now;
+            if (now - stoppedSince >= HoldSeconds)
                 Complete("The Farm");
         }
 
@@ -392,6 +392,13 @@ namespace MachWorks.BackCountryOperations
                 : freightMilestone == ValleyProgress.LoadedSupply ? "Loaded supply delivered. High-lift flaps unlocked."
                 : $"{jobName} complete in {seconds / 60}:{seconds % 60:00}.";
             statusUntil = Time.unscaledTime + 10f;
+            if (freightMilestone == ValleyProgress.FarmGearCheck)
+            {
+                Status = "Gear check passed. Balloon tires unlocked.";
+                statusUntil = 0f;
+                QuestAdditionUI.Instance?.DisplayText("The Farm: Gear check passed. Balloon tires are available in the workshop.",
+                    MessageType.Misc, null);
+            }
             logger.LogInfo($"{jobName} completed at {location} in {seconds} seconds.");
         }
 
