@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <Version>0.21.2</Version>
+    <AviassemblyDir Condition="'$(AviassemblyDir)' == '' And Exists('C:/Program Files (x86)/Steam/steamapps/common/Aviassembly/Aviassembly.exe')">C:/Program Files (x86)/Steam/steamapps/common/Aviassembly</AviassemblyDir>
+    <AviassemblyDir Condition="'$(AviassemblyDir)' == ''">E:/SteamLibrary/steamapps/common/Aviassembly</AviassemblyDir>
+    <GameManagedDir>$(AviassemblyDir)/Aviassembly_Data/Managed</GameManagedDir>
+    <BepInExCoreDir>$(AviassemblyDir)/BepInEx/core</BepInExCoreDir>
+    <FlapModDll Condition="'$(FlapModDll)' == '' And Exists('$(MSBuildProjectDirectory)/../Flaps/AviassemblyFlaps.dll')">$(MSBuildProjectDirectory)/../Flaps/AviassemblyFlaps.dll</FlapModDll>
+    <FlapModDll Condition="'$(FlapModDll)' == ''">$(MSBuildProjectDirectory)/Vendor/AviassemblyFlaps.dll</FlapModDll>
+    <DefaultItemExcludes>$(DefaultItemExcludes);YawFix/**</DefaultItemExcludes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="BepInEx" HintPath="$(BepInExCoreDir)/BepInEx.dll" Private="false" />
+    <Reference Include="0Harmony" HintPath="$(BepInExCoreDir)/0Harmony.dll" Private="false" />
+    <Reference Include="Assembly-CSharp" HintPath="$(GameManagedDir)/Assembly-CSharp.dll" Private="false" />
+    <Reference Include="UnityEngine" HintPath="$(GameManagedDir)/UnityEngine.dll" Private="false" />
+    <Reference Include="UnityEngine.CoreModule" HintPath="$(GameManagedDir)/UnityEngine.CoreModule.dll" Private="false" />
+    <Reference Include="UnityEngine.ImageConversionModule" HintPath="$(GameManagedDir)/UnityEngine.ImageConversionModule.dll" Private="false" />
+    <Reference Include="UnityEngine.PhysicsModule" HintPath="$(GameManagedDir)/UnityEngine.PhysicsModule.dll" Private="false" />
+    <Reference Include="UnityEngine.IMGUIModule" HintPath="$(GameManagedDir)/UnityEngine.IMGUIModule.dll" Private="false" />
+    <Reference Include="UnityEngine.TextRenderingModule" HintPath="$(GameManagedDir)/UnityEngine.TextRenderingModule.dll" Private="false" />
+    <Reference Include="Unity.InputSystem" HintPath="$(GameManagedDir)/Unity.InputSystem.dll" Private="false" />
+    <Reference Include="UnityEngine.UI" HintPath="$(GameManagedDir)/UnityEngine.UI.dll" Private="false" />
+    <Reference Include="UnityEngine.UIModule" HintPath="$(GameManagedDir)/UnityEngine.UIModule.dll" Private="false" />
+    <Reference Include="Unity.TextMeshPro" HintPath="$(GameManagedDir)/Unity.TextMeshPro.dll" Private="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="$(FlapModDll)" LogicalName="BackCountryOperations.AviassemblyFlaps.dll" />
+    <EmbeddedResource Include="Assets/RunwayPatchKit.png" LogicalName="BackCountryOperations.RunwayPatchKit.png" />
+  </ItemGroup>
+
+  <Target Name="CheckGameReferences" BeforeTargets="ResolveAssemblyReferences">
+    <Error Condition="!Exists('$(BepInExCoreDir)/BepInEx.dll') Or !Exists('$(GameManagedDir)/UnityEngine.dll') Or !Exists('$(GameManagedDir)/UnityEngine.CoreModule.dll')"
+           Text="Set AviassemblyDir to an Aviassembly installation with BepInEx 5 installed." />
+    <Error Condition="!Exists('$(FlapModDll)')"
+           Text="Clone the repository with its Flaps folder or set FlapModDll to AviassemblyFlaps.dll." />
+  </Target>
+</Project>
