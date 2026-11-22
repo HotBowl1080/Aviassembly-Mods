@@ -12,6 +12,7 @@ Mods and development tools for Aviassembly. Current downloads live on `main`, or
 | [Weather Edition DLL](https://github.com/HotBowl1080/Aviassembly-Mods/raw/refs/heads/main/AtmosphereWeather/Aviassembly.AtmosphereWeather.dll) | Dynamic weather through Marginal VFR, day and night cycle, runway lights, PAPI, and precise altitude | v1.0.16 |
 | [BackCountry Operations v0.75-MaybeAndrewWillAndrew](https://github.com/HotBowl1080/Aviassembly-Mods/raw/refs/heads/main/BackCountryOperations/BackCountry%20Operations%20v0.75-MaybeAndrewWillAndrew.dll) | Forest Island earthquake recovery, damaged runway handling and airfield repairs | v0.75-MaybeAndrewWillAndrew |
 | [Performance 240 DLL](https://github.com/HotBowl1080/Aviassembly-Mods/raw/refs/heads/main/Performance240/Aviassembly.Performance240.dll) | Adaptive rendering settings for a 240 FPS target | v1.0.1 |
+| [Yaw Fix DLL](https://github.com/HotBowl1080/Aviassembly-Mods/raw/refs/heads/main/YawFix/YawFix.dll) | Centers the rudder immediately when yaw input is released | v1.0.1 |
 | [Wing viewer ZIP](https://github.com/HotBowl1080/Aviassembly-Mods/raw/refs/heads/main/Flaps/aviassembly-wing-preview.zip) | One HTML viewer with all 16 native wing parts | Optional preview; not a game plugin |
 
 For Flap Mod, download the mod ZIP and follow its included install instructions. Other projects offer DLL downloads. The viewer ZIP is for inspecting the models in a browser.
@@ -37,6 +38,7 @@ For the viewer, extract the ZIP and open `aviassembly-wing-preview.html` in Chro
 | [Weather Edition](AtmosphereWeather/) | Standalone weather and airport lighting plugin download and checksum |
 | [BackCountry Operations](BackCountryOperations/) | Forest Island career mod, installation instructions and checksum |
 | [Performance 240](Performance240/) | Performance plugin download and checksum |
+| [Yaw Fix](YawFix/) | Rudder release plugin, source and installation instructions |
 | [WingInspector](WingInspector/) | Source-only development helper for inspecting loaded wing geometry |
 
 Older wing viewer versions are preserved in [Flaps/archive](Flaps/archive/). Development notes and validation results are linked from each project's README.
