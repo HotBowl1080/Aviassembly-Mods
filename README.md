@@ -10,6 +10,7 @@ Mods and development tools for Aviassembly. Current downloads live on `main`, or
 | [Editor Tools DLL](https://github.com/HotBowl1080/Aviassembly-Mods/raw/refs/heads/main/EditorTools/Aviassembly.EditorTools.dll) | Camera focus, precision editing, multi-selection, part hiding and propeller clearance | v0.7.13 |
 | [Atmosphere DLL](https://github.com/HotBowl1080/Aviassembly-Mods/raw/refs/heads/main/Atmosphere/Aviassembly.Atmosphere.dll) | Dynamic weather, flight instruments, terrain checked approaches, climb and turn guidance, and optional landing scores | v0.26.1 |
 | [Weather Edition DLL](https://github.com/HotBowl1080/Aviassembly-Mods/raw/refs/heads/main/AtmosphereWeather/Aviassembly.AtmosphereWeather.dll) | Dynamic weather through Marginal VFR, day and night cycle, runway lights, PAPI, and precise altitude | v1.0.16 |
+| [BackCountry Operations v0.75-MaybeAndrewWillAndrew](https://github.com/HotBowl1080/Aviassembly-Mods/raw/refs/heads/main/BackCountryOperations/BackCountry%20Operations%20v0.75-MaybeAndrewWillAndrew.dll) | Forest Island earthquake recovery, damaged runway handling and airfield repairs | v0.75-MaybeAndrewWillAndrew |
 | [Performance 240 DLL](https://github.com/HotBowl1080/Aviassembly-Mods/raw/refs/heads/main/Performance240/Aviassembly.Performance240.dll) | Adaptive rendering settings for a 240 FPS target | v1.0.1 |
 | [Wing viewer ZIP](https://github.com/HotBowl1080/Aviassembly-Mods/raw/refs/heads/main/Flaps/aviassembly-wing-preview.zip) | One HTML viewer with all 16 native wing parts | Optional preview; not a game plugin |
 
@@ -34,6 +35,7 @@ For the viewer, extract the ZIP and open `aviassembly-wing-preview.html` in Chro
 | [EditorTools](EditorTools/) | Editor plugin, matching source and tests, plus the [Editor Tools changelog](EditorTools/CHANGELOG.md) |
 | [Atmosphere](Atmosphere/) | Weather and HUD plugin download and checksum |
 | [Weather Edition](AtmosphereWeather/) | Standalone weather and airport lighting plugin download and checksum |
+| [BackCountry Operations](BackCountryOperations/) | Forest Island career mod, installation instructions and checksum |
 | [Performance 240](Performance240/) | Performance plugin download and checksum |
 | [WingInspector](WingInspector/) | Source-only development helper for inspecting loaded wing geometry |
 
