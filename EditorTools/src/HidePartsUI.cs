@@ -9,7 +9,6 @@ namespace Aviassembly.EditorTools
     {
         private GameObject hideRoot, showRoot;
         private Button hideButton, showButton;
-        private TMP_Text showLabel;
         private Canvas canvas;
         public bool IsAlive => hideRoot != null && showRoot != null && canvas != null;
 
@@ -20,9 +19,9 @@ namespace Aviassembly.EditorTools
                 var canvas = native.GetComponentInParent<Canvas>();
                 if (canvas == null || !canvas.isActiveAndEnabled || native.buttonImage == null || native.text == null || native.text.font == null) continue;
                 var ui = new HidePartsUI { canvas = canvas.rootCanvas };
-                TMP_Text hideText;
-                ui.hideRoot = CreateButton(native, "EditorTools Hide Part", "Hide [V]", 180, true, () => owner.HideSelected(), out ui.hideButton, out hideText);
-                ui.showRoot = CreateButton(native, "EditorTools Show Parts", "Show All (0) [I]", 250, false, owner.ShowAllFromUI, out ui.showButton, out ui.showLabel);
+                float size = Mathf.Max(38, native.buttonImage.rectTransform.rect.height);
+                ui.hideRoot = CreateButton(native, "EditorTools Hide Part", null, size, true, () => owner.HideSelected(), out ui.hideButton, out _);
+                ui.showRoot = CreateButton(native, "EditorTools Show Parts", null, size, false, owner.ShowAllFromUI, out ui.showButton, out _);
                 ui.Refresh(true, false, 0, false);
                 return ui;
             }
@@ -51,18 +50,23 @@ namespace Aviassembly.EditorTools
             button.targetGraphic = image;
             button.navigation = new Navigation { mode = Navigation.Mode.None };
             button.onClick.AddListener(action);
-            var iconObject = new GameObject(crossedEye ? "Hide eye icon" : "Show eye icon", typeof(RectTransform), typeof(CanvasRenderer), typeof(HidePartsEyeIcon));
-            iconObject.layer = root.layer;
-            var iconRect = (RectTransform)iconObject.transform;
-            iconRect.SetParent(rect, false);
-            iconRect.anchorMin = iconRect.anchorMax = new Vector2(0, 0.5f);
-            iconRect.anchoredPosition = new Vector2(27, 0);
-            iconRect.sizeDelta = new Vector2(32, 32);
-            var icon = iconObject.GetComponent<HidePartsEyeIcon>();
-            icon.Crossed = crossedEye;
-            icon.color = Color.black;
-            icon.raycastTarget = false;
-            iconObject.SetActive(withIcon);
+            bool hasText = !string.IsNullOrEmpty(text);
+            if (withIcon)
+            {
+                var iconObject = new GameObject(crossedEye ? "Hide eye icon" : "Show eye icon", typeof(RectTransform), typeof(CanvasRenderer), typeof(HidePartsEyeIcon));
+                iconObject.layer = root.layer;
+                var iconRect = (RectTransform)iconObject.transform;
+                iconRect.SetParent(rect, false);
+                iconRect.anchorMin = iconRect.anchorMax = new Vector2(hasText ? 0 : 0.5f, 0.5f);
+                iconRect.anchoredPosition = hasText ? new Vector2(27, 0) : Vector2.zero;
+                iconRect.sizeDelta = new Vector2(32, 32);
+                var icon = iconObject.GetComponent<HidePartsEyeIcon>();
+                icon.Crossed = crossedEye;
+                icon.color = Color.black;
+                icon.raycastTarget = false;
+            }
+            label = null;
+            if (!hasText) return root;
             var textObject = new GameObject("Label", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
             textObject.layer = root.layer;
             textObject.transform.SetParent(rect, false);
@@ -94,7 +98,6 @@ namespace Aviassembly.EditorTools
             showRoot.SetActive(visible);
             hideButton.interactable = canHide;
             showButton.interactable = canInteract && count > 0;
-            showLabel.text = "Show All (" + count + ") [I]";
         }
 
         public bool Contains(Vector2 position)

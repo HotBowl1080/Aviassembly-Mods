@@ -78,9 +78,9 @@ namespace Aviassembly.EditorTools
                     Key("G / R", "Move / rotate the selection") +
                     Key("Drag a move arrow", "Hover an edge or corner to align on that axis") +
                     Key("R again", "Trackball rotation") +
-                    Key("Drag an arrow or ring", "Move or rotate on its axis") +
+                    Key("Drag a square", "Move in the plane between two arrows") +
                     Key("X / Y / Z", "Start on an axis in Move or Rotate. Repeat for local") +
-                    Key("Shift + X / Y / Z", "Move on the other two axes") +
+                    Key("G, X, Y", "Move in XY. X + Z and Y + Z work too") +
                     Key("Middle mouse", "Choose an axis by mouse direction") +
                     Key("Shift / Ctrl / both", "Fine adjustment / snap / fine snap") +
                     "\n" + Section("Exact values") +

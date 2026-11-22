@@ -1,4 +1,4 @@
-# Aviassembly Editor Tools 0.7.13
+# Aviassembly Editor Tools 0.7.15
 
 ## Download and install
 
@@ -41,6 +41,7 @@ Hide and Show All use a matching row above the native toolbar, leaving the game'
 | Rotate selected placed part | R, then move mouse or type degrees |
 | Trackball rotation | R again during rotation |
 | Axis constraint | X, Y, or Z |
+| Move in XY, XZ, or YZ | Drag the square between two Move arrows, or press G followed by the two axis keys |
 | Local axis | Press the same axis again |
 | Remove constraint | Press the same axis a third time |
 | Exclude an axis while moving | Shift with X, Y, or Z |
@@ -69,6 +70,8 @@ Focused mode centers a part when you click it or finish resizing it, including w
 The Hotkeys button and K open the centered shortcuts panel while the editor is idle. K, Escape, and Close dismiss it.
 
 ## Precision Edit
+
+Drag the square between two Move arrows to move along those two local axes. The red square moves in XY, the blue square in XZ, and the green square in YZ. For world axes, press G and then press the two axis keys together or in sequence. For example, G, X, Y moves in XY and holds Z. Use Tab to enter the second component when typing an exact move.
 
 Precision input is automatically available on the game's movement arrows and rotation rings; no mode switch or panel is required, and normal camera and selection controls remain available while idle
 
@@ -140,7 +143,7 @@ Hidden parts always have a faint blue X-ray view through surrounding geometry; t
 
 The overlay draws existing geometry with a separate material and never replaces original materials; renderers that were already disabled before hiding stay absent; I removes all ghosts and restores each original renderer state
 
-I restores every part hidden by this mod; Show All displays the count and has an open-eye icon, while Hide has a crossed-eye icon
+Press V or click the crossed eye to hide the selection. Press I or click the open eye to restore every hidden part.
 
 Hiding preserves colliders, layers, transforms, attachment lists, money, saves, and undo history; only editor picking and highlights ignore hidden geometry
 
@@ -179,7 +182,7 @@ The runner uses a separate disposable game copy under .work\UnityTestHost, suppr
 
 The standalone Hide Parts worker used a different isolated host; its 60 passing checks are recorded in tests\hide-parts-standalone-results.txt
 
-The combined build passed 594 isolated Unity checks and compiled with zero warnings or errors. The full run is in [runtime-results.txt](tests/runtime-results.txt). The separate camera math suite passed 345 checks.
+The combined build passed 616 isolated Unity checks and compiled with zero warnings or errors. The full run is in [runtime-results.txt](tests/runtime-results.txt). The separate camera math suite passed 345 checks.
 
 Geometry snapping uses visible mesh corners and edges. The magnet remembers Center or Edge for advanced moves. On an axis, Center uses the midpoint of the selected geometry along that axis, and Edge uses the end nearest the hovered target. In a free move, Center uses the middle of the selection in the active part's orientation. Edge uses the starting corner or edge under the cursor, or the nearest source edge if the move started in empty space. Typed amounts take precedence.
 

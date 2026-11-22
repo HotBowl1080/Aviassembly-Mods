@@ -116,7 +116,14 @@ public static class UnityHidePartsIntegrationTests
             check(ui != null && ui.IsAlive, "Combined: native hide toolbar exists alongside Precision");
             if (ui != null)
             {
-                check(Get<TMP_Text>(ui, "showLabel").text == "Show All (1) [I]", "Combined: restore label contains count and I");
+                foreach (bool crossed in new[] { true, false })
+                {
+                    var root = Get<GameObject>(ui, crossed ? "hideRoot" : "showRoot");
+                    var icon = root.GetComponentInChildren<HidePartsEyeIcon>();
+                    check(root.GetComponentInChildren<TMP_Text>(true) == null && icon != null && icon.Crossed == crossed &&
+                        icon.rectTransform.anchorMin == Vector2.one * 0.5f && icon.rectTransform.anchoredPosition == Vector2.zero,
+                        "Combined: " + (crossed ? "Hide" : "Show All") + " displays only a centered eye icon");
+                }
                 Get<Button>(ui, "showButton").onClick.Invoke();
                 check(hide.HiddenCount == 0 && renderer.enabled, "Combined: real Show All button listener restores part");
                 Select(hiddenTarget); hide.RefreshUI();

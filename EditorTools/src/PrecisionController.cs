@@ -88,10 +88,8 @@ namespace Aviassembly.EditorTools
                     else if (!handleDragging && Time.frameCount != beginFrame && Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame && !host.PointerOverPanel()) Apply();
                     return;
                 }
-                if (keyboard.xKey.wasPressedThisFrame) Constrain(0, keyboard.shiftKey.isPressed);
-                if (keyboard.yKey.wasPressedThisFrame) Constrain(1, keyboard.shiftKey.isPressed);
-                if (keyboard.zKey.wasPressedThisFrame) Constrain(2, keyboard.shiftKey.isPressed);
-                if (Mouse.current != null && Mouse.current.middleButton.wasPressedThisFrame && !Trackball)
+                if (!planeHandle) ApplyAxisKeys();
+                if (!planeHandle && Mouse.current != null && Mouse.current.middleButton.wasPressedThisFrame && !Trackball)
                     ConstrainByMouse(Mouse.current.position.ReadValue(), keyboard.shiftKey.isPressed);
                 if (Rotating && keyboard.rKey.wasPressedThisFrame && Time.frameCount != beginFrame)
                 { Trackball = !Trackball; Axis = -1; PlaneLock = false; Local = false; component = 0; }
@@ -104,8 +102,11 @@ namespace Aviassembly.EditorTools
                 foreach (char c in queuedText) Type(c);
                 queuedText = "";
                 UpdateMouse();
+                bool releasedPlane = planeHandle && handleDragging && Mouse.current != null && !Mouse.current.leftButton.isPressed;
+                if (releasedPlane) handleDragging = false;
                 if (keyboard.enterKey.wasPressedThisFrame || keyboard.numpadEnterKey.wasPressedThisFrame ||
-                    (Time.frameCount != beginFrame && Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame &&
+                    (releasedPlane && !numeric) ||
+                    (!handleDragging && Time.frameCount != beginFrame && Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame &&
                      !(UI?.Contains(Mouse.current.position.ReadValue()) ?? false) && !host.PointerOverPanel())) Apply();
             }
             else if (host.InEditor && !host.TextEntryActive && !BlockGameInput)
@@ -119,21 +120,22 @@ namespace Aviassembly.EditorTools
                 if (keyboard.escapeKey.wasPressedThisFrame || (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)) ClearRecentAction();
                 if (CanStart && !keyboard.ctrlKey.isPressed && !keyboard.altKey.isPressed)
                 {
-                    int axis = keyboard.xKey.wasPressedThisFrame ? 0 : keyboard.yKey.wasPressedThisFrame ? 1 : keyboard.zKey.wasPressedThisFrame ? 2 : -1;
+                    bool onUI = MouseInput.Instance != null && MouseInput.Instance.PointerIsOverUI;
+                    if (!onUI && keyboard.gKey.wasPressedThisFrame && Begin(false, true))
+                    {
+                        ApplyAxisKeys();
+                        return;
+                    }
+                    if (!onUI && keyboard.rKey.wasPressedThisFrame && Begin(true, true))
+                    {
+                        ApplyAxisKeys();
+                        return;
+                    }
                     bool move = placer.moveGizmo != null && placer.moveGizmo.gameObject.activeInHierarchy;
                     bool rotate = placer.rotationGizmo != null && placer.rotationGizmo.gameObject.activeInHierarchy;
                     bool menuKnown = move != rotate || (move && lastMenuPart == placer.currentSelectedPart);
-                    if (axis >= 0 && menuKnown && Begin(rotate && (!move || lastMenuRotation), true))
-                    {
-                        Constrain(axis, keyboard.shiftKey.isPressed);
-                        return;
-                    }
-                }
-                if (!keyboard.ctrlKey.isPressed && !keyboard.altKey.isPressed && CanStart &&
-                    !(MouseInput.Instance != null && MouseInput.Instance.PointerIsOverUI))
-                {
-                    if (keyboard.gKey.wasPressedThisFrame) Begin(false, true);
-                    else if (keyboard.rKey.wasPressedThisFrame) Begin(true, true);
+                    if (PressedAxes() != 0 && menuKnown && Begin(rotate && (!move || lastMenuRotation), true))
+                        ApplyAxisKeys();
                 }
             }
         }
@@ -194,6 +196,33 @@ namespace Aviassembly.EditorTools
             else if (!Local) Local = true;
             else { Axis = -1; Local = false; PlaneLock = false; }
             component = 0;
+        }
+        private int PressedAxes() => (keyboard.xKey.wasPressedThisFrame ? 1 : 0) |
+            (keyboard.yKey.wasPressedThisFrame ? 2 : 0) | (keyboard.zKey.wasPressedThisFrame ? 4 : 0);
+
+        private void ApplyAxisKeys()
+        {
+            int pressed = PressedAxes();
+            if (pressed == 0 || Trackball) return;
+            bool exclude = keyboard.shiftKey.isPressed;
+            int held = (keyboard.xKey.isPressed ? 1 : 0) | (keyboard.yKey.isPressed ? 2 : 0) | (keyboard.zKey.isPressed ? 4 : 0);
+            if (!Rotating && !exclude)
+            {
+                int axes = pressed | held;
+                if (axes == 1 || axes == 2 || axes == 4)
+                {
+                    if (Axis >= 0 && !PlaneLock) axes |= 1 << Axis;
+                }
+                if (axes == 3 || axes == 5 || axes == 6)
+                {
+                    Axis = axes == 3 ? 2 : axes == 5 ? 1 : 0;
+                    PlaneLock = true;
+                    component = 0;
+                    return;
+                }
+            }
+            for (int axis = 0; axis < 3; axis++)
+                if ((pressed & (1 << axis)) != 0) Constrain(axis, exclude);
         }
         internal void Type(char c)
         {
@@ -294,7 +323,8 @@ namespace Aviassembly.EditorTools
                     else
                     {
                         Vector3 normal = PlaneLock ? Direction(Axis) : cam.transform.forward;
-                        delta = (PlanePoint(mouse, normal) - PlanePoint(startMouse, normal)) * factor;
+                        var anchor = planeHandle ? planeGrabPoint : Session.StartPosition;
+                        delta = DragProjection.PlaneDisplacement(cam, anchor, normal, startMouse, mouse) * factor;
                     }
                     if (snap)
                     {
@@ -304,6 +334,7 @@ namespace Aviassembly.EditorTools
                         {
                             Vector3 components = new Vector3(Vector3.Dot(delta, Direction(0)), Vector3.Dot(delta, Direction(1)), Vector3.Dot(delta, Direction(2)));
                             components = TransformMath.Snap(components, step);
+                            if (PlaneLock) components[Axis] = 0;
                             delta = Direction(0) * components.x + Direction(1) * components.y + Direction(2) * components.z;
                         }
                     }
@@ -364,6 +395,7 @@ namespace Aviassembly.EditorTools
             snapHit = null;
             consumedFrame = Time.frameCount; Modal = false; queuedText = "";
             handleOperation = false; handleDragging = false;
+            planeHandle = false;
             ClearHandleSelection();
             Status = "Drag an arrow or ring, then type";
             foreach (var guide in guides) if (guide != null) guide.enabled = false;
@@ -406,6 +438,7 @@ namespace Aviassembly.EditorTools
             if (keyboard != null) keyboard.onTextInput -= OnText;
             foreach (var line in guides) if (line != null) UnityEngine.Object.Destroy(line.gameObject);
             if (guideMaterial != null) UnityEngine.Object.Destroy(guideMaterial);
+            if (planeHandleMaterial != null) UnityEngine.Object.Destroy(planeHandleMaterial);
             UI?.Dispose();
         }
     }

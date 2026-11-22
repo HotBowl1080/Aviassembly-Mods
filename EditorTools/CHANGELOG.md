@@ -1,5 +1,16 @@
 # Editor Tools changelog
 
+## 0.7.15
+
+- Added draggable Move squares for XY, XZ, and YZ. A square follows the two local axes between its arrows and holds the third coordinate fixed.
+- Press G and then tap two axis keys in sequence or press them together to move in that world plane. For example, G, X, Y locks movement to XY.
+- Plane moves support Tab to enter the second numeric offset. Drag tests cover a rotated part, confirmation on release, and restoration on Escape.
+- Passed 616 automated Unity checks. Verified that the installer places the matching 0.7.15 DLL.
+
+## 0.7.14
+
+- Made Hide and Show All compact icon buttons. The crossed eye hides the selection and the open eye restores all hidden parts. V and I perform the same actions.
+
 ## 0.7.13
 
 - Fixed horizontal fuselage offset sensitivity. The horizontal and vertical offset arrows now track the grabbed point in perspective, matching the length arrow.

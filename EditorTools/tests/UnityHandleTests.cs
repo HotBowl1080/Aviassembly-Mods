@@ -279,10 +279,80 @@ public static class UnityHandleTests
                         "Audit: native movement arrow matches its local axis and entered distance " + arrow.name + " local=" + Quaternion.Inverse(pose) * direction);
                     precision.Cancel(); NextFrame(); InputAt(Vector2.zero);
                 }
+                for (int normal = 0; normal < 3; normal++)
+                {
+                    var first = normal == 0 ? stockArrows.Y : stockArrows.X;
+                    var second = normal == 2 ? stockArrows.Y : stockArrows.Z;
+                    part.SetPositionAndRotation(originalPosition, pose);
+                    stockArrows.transform.SetPositionAndRotation(originalPosition, pose);
+                    Physics.SyncTransforms();
+                    Vector3 Reach(MoveGizmoElement arrow)
+                    {
+                        var collider = arrow.GetComponentInChildren<Collider>() ?? arrow.GetComponentInParent<Collider>();
+                        return Vector3.Project(collider.bounds.center - originalPosition, arrow.direction.forward);
+                    }
+                    var grab = originalPosition + (Reach(first) + Reach(second)) * 0.295f;
+                    Vector2 start = cam.WorldToScreenPoint(grab);
+                    InputAt(start, true); precision.ProcessInput();
+                    check(precision.Session.Active && precision.PlaneLock && precision.Local && precision.Axis == normal,
+                        "Plane handles: actual gizmo click starts local plane excluding " + "XYZ"[normal] + " (" + precision.ReadoutLine + ")");
+                    var delta = first.direction.forward * 0.31f - second.direction.forward * 0.23f;
+                    Vector2 end = cam.WorldToScreenPoint(grab + delta);
+                    InputAt(end, true); precision.ProcessInput();
+                    check(Vector3.Distance(part.transform.position, originalPosition + delta) < 0.001f,
+                        "Plane handles: both axes track the cursor on a rotated part, excluding " + "XYZ"[normal]);
+                    InputAt(end); precision.ProcessInput();
+                    check(!precision.Session.Active && Vector3.Distance(part.transform.position, originalPosition + delta) < 0.001f,
+                        "Plane handles: release confirms both offsets");
+                    precision.Cancel(); NextFrame(); InputAt(Vector2.zero);
+                    part.SetPositionAndRotation(originalPosition, pose);
+                    stockArrows.transform.SetPositionAndRotation(originalPosition, pose);
+                    Physics.SyncTransforms();
+                    InputAt(start, true); precision.ProcessInput();
+                    Type("0.25");
+                    InputAt(start, true, Key.Tab); precision.ProcessInput();
+                    InputAt(start, true);
+                    Type("-0.4");
+                    var exact = originalPosition + first.direction.forward * 0.25f - second.direction.forward * 0.4f;
+                    InputAt(start); precision.ProcessInput();
+                    check(precision.Session.Active && Vector3.Distance(part.transform.position, exact) < 0.001f,
+                        "Plane handles: two typed local offsets preview separately and await confirmation");
+                    InputAt(start, false, Key.Escape); precision.ProcessInput();
+                    check(!precision.Session.Active && Vector3.Distance(part.transform.position, originalPosition) < 0.001f,
+                        "Plane handles: Escape restores the pose from before the drag");
+                    NextFrame(); InputAt(Vector2.zero);
+                }
             }
             finally { placer.moveGizmo = move; UnityEngine.Object.DestroyImmediate(stockArrows.gameObject); }
             cam.transform.SetPositionAndRotation(originalPosition - Vector3.forward * 15, Quaternion.identity);
             ResetPose();
+            move.gameObject.SetActive(false); rotate.gameObject.SetActive(false);
+            foreach (var pair in new[] { (Key.X, Key.Y, 2), (Key.X, Key.Z, 1), (Key.Y, Key.Z, 0) })
+            foreach (bool chord in new[] { false, true })
+            {
+                ResetPose();
+                Vector2 center = cam.WorldToScreenPoint(originalPosition);
+                if (chord)
+                {
+                    InputAt(center, false, Key.G, pair.Item1, pair.Item2); precision.ProcessInput();
+                }
+                else
+                {
+                    InputAt(center, false, Key.G); precision.ProcessInput();
+                    InputAt(center, false, pair.Item1); precision.ProcessInput();
+                    InputAt(center, false, pair.Item2); precision.ProcessInput();
+                }
+                var expected = new Vector3(2, 2, 2);
+                expected[pair.Item3] = 0;
+                InputAt(center); Type("2");
+                InputAt(center, false, Key.Tab); precision.ProcessInput();
+                InputAt(center); Type("2");
+                check(precision.Session.Active && precision.PlaneLock && !precision.Local && precision.Axis == pair.Item3 &&
+                    Vector3.Distance(part.transform.position, originalPosition + expected) < 0.001f,
+                    "Plane keys: " + pair.Item1 + "+" + pair.Item2 + " constrains G and accepts two components, chord=" + chord);
+            }
+            ResetPose();
+            rotate.gameObject.SetActive(true);
             placer.RotatePart();
             check(!precision.Session.Active && precision.ReadoutTitle == "Rotation", "Handles: native Rotate button only shows rotation hint without capturing input");
             placer.MovePart();

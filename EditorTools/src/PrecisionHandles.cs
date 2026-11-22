@@ -109,6 +109,12 @@ namespace Aviassembly.EditorTools
                 }
             }
             Check(placer.moveGizmo); Check(placer.rotationGizmo);
+            var planeGizmo = PlaneGizmo;
+            if (planeGizmo != null)
+            {
+                int plane = PickMovePlane(planeGizmo, BuildingCamera.cam, ray, distance, out var grab);
+                if (plane >= 0) return BeginPlaneHandle(plane, grab);
+            }
             if (closest is MoveGizmoElement move)
             {
                 var gizmo = placer.moveGizmo;

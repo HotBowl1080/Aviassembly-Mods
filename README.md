@@ -7,7 +7,7 @@ Mods and development tools for Aviassembly. Current downloads live on `main`, or
 | Download | What it contains | Status |
 | --- | --- | --- |
 | [Flap Mod ZIP](https://github.com/HotBowl1080/Aviassembly-Mods/raw/refs/heads/main/Flaps/releases/1.0.0/Flap-Mod-1.0.0.zip) | 13 flap-capable wings, Big Wing spoilers, saved purchases and controller input | 1.0.0 |
-| [Editor Tools DLL](https://github.com/HotBowl1080/Aviassembly-Mods/raw/refs/heads/main/EditorTools/Aviassembly.EditorTools.dll) | Camera focus, precision editing, multi-selection, part hiding and propeller clearance | v0.7.13 |
+| [Editor Tools DLL](https://github.com/HotBowl1080/Aviassembly-Mods/raw/refs/heads/main/EditorTools/Aviassembly.EditorTools.dll) | Camera focus, precision editing, multi-selection, part hiding and propeller clearance | v0.7.15 |
 | [Atmosphere DLL](https://github.com/HotBowl1080/Aviassembly-Mods/raw/refs/heads/main/Atmosphere/Aviassembly.Atmosphere.dll) | Dynamic weather, flight instruments, terrain checked approaches, climb and turn guidance, and optional landing scores | v0.26.1 |
 | [Weather Edition DLL](https://github.com/HotBowl1080/Aviassembly-Mods/raw/refs/heads/main/AtmosphereWeather/Aviassembly.AtmosphereWeather.dll) | Dynamic weather through Marginal VFR, day and night cycle, runway lights, PAPI, and precise altitude | v1.0.16 |
 | [BackCountry Operations v0.75-MaybeAndrewWillAndrew](https://github.com/HotBowl1080/Aviassembly-Mods/raw/refs/heads/main/BackCountryOperations/BackCountry%20Operations%20v0.75-MaybeAndrewWillAndrew.dll) | Forest Island earthquake recovery, damaged runway handling and airfield repairs | v0.75-MaybeAndrewWillAndrew |

@@ -240,6 +240,27 @@ PASS Handles: native ring readout and typed angle agree with the part's local ax
 PASS Audit: native movement arrow matches its local axis and entered distance X local=(1.00, 0.00, 0.00)
 PASS Audit: native movement arrow matches its local axis and entered distance Y local=(0.00, 1.00, 0.00)
 PASS Audit: native movement arrow matches its local axis and entered distance Z local=(0.00, 0.00, 1.00)
+PASS Plane handles: actual gizmo click starts local plane excluding X (Move by (Y,Z, local): 0, 0 m)
+PASS Plane handles: both axes track the cursor on a rotated part, excluding X
+PASS Plane handles: release confirms both offsets
+PASS Plane handles: two typed local offsets preview separately and await confirmation
+PASS Plane handles: Escape restores the pose from before the drag
+PASS Plane handles: actual gizmo click starts local plane excluding Y (Move by (X,Z, local): 0, 0 m)
+PASS Plane handles: both axes track the cursor on a rotated part, excluding Y
+PASS Plane handles: release confirms both offsets
+PASS Plane handles: two typed local offsets preview separately and await confirmation
+PASS Plane handles: Escape restores the pose from before the drag
+PASS Plane handles: actual gizmo click starts local plane excluding Z (Move by (X,Y, local): 0, 0 m)
+PASS Plane handles: both axes track the cursor on a rotated part, excluding Z
+PASS Plane handles: release confirms both offsets
+PASS Plane handles: two typed local offsets preview separately and await confirmation
+PASS Plane handles: Escape restores the pose from before the drag
+PASS Plane keys: X+Y constrains G and accepts two components, chord=False
+PASS Plane keys: X+Y constrains G and accepts two components, chord=True
+PASS Plane keys: X+Z constrains G and accepts two components, chord=False
+PASS Plane keys: X+Z constrains G and accepts two components, chord=True
+PASS Plane keys: Y+Z constrains G and accepts two components, chord=False
+PASS Plane keys: Y+Z constrains G and accepts two components, chord=True
 PASS Handles: native Rotate button only shows rotation hint without capturing input
 PASS Handles: native Move button replaces rotation hint with movement hint
 PASS Handles: contextual readout contains no old panel fields or buttons
@@ -346,7 +367,8 @@ PASS Combined: native PartPlacer and gizmo input blocked during text focus
 PASS Combined: I restores all after text focus ends
 PASS Combined: V works again after all guards release
 PASS Combined: native hide toolbar exists alongside Precision
-PASS Combined: restore label contains count and I
+PASS Combined: Hide displays only a centered eye icon
+PASS Combined: Show All displays only a centered eye icon
 PASS Combined: real Show All button listener restores part
 PASS Combined: real Hide button listener hides selected part
 PASS Pointer: Hide stays enabled while held down
@@ -361,7 +383,7 @@ PASS Combined: final I restores original renderer state
 PASS Combined layout: all four native bottom controls forced visible
 PASS Combined layout: native CG and Drag controls located CG=(x:1250.59, y:14.26, width:97.24, height:38.69) Drag=(x:1362.09, y:14.26, width:146.43, height:38.69)
 PASS Combined layout: every toolbar control inside screen 1904x984; maxX=892.73
-PASS Combined layout: toolbar clears right CG/Drag controls; maxX=892.73 CG=(x:1250.59, y:14.26, width:97.24, height:38.69) Drag=(x:1362.09, y:14.26, width:146.43, height:38.69) Snapping=(x:14.25, y:13.99, width:213.87, height:39.21) Undo=(x:242.38, y:13.99, width:41.28, height:39.21) Mirror=(x:297.91, y:13.99, width:156.43, height:39.21) RotationSnap=(x:468.60, y:13.99, width:224.51, height:39.21) EditorTools Hide Part=(x:149.70, y:62.28, width:128.32, height:39.21) EditorTools Show Parts=(x:292.28, y:62.28, width:178.23, height:39.21) EditorTools Camera Mode=(x:707.37, y:13.99, width:185.35, height:39.21)
+PASS Combined layout: toolbar clears right CG/Drag controls; maxX=892.73 CG=(x:1250.59, y:14.26, width:97.24, height:38.69) Drag=(x:1362.09, y:14.26, width:146.43, height:38.69) Snapping=(x:14.25, y:13.99, width:213.87, height:39.21) Undo=(x:242.38, y:13.99, width:41.28, height:39.21) Mirror=(x:297.91, y:13.99, width:156.43, height:39.21) RotationSnap=(x:468.60, y:13.99, width:224.51, height:39.21) EditorTools Hide Part=(x:149.70, y:62.28, width:39.21, height:39.21) EditorTools Show Parts=(x:203.17, y:62.28, width:39.21, height:39.21) EditorTools Camera Mode=(x:707.37, y:13.99, width:185.35, height:39.21)
 PASS Combined layout: all native and custom toolbar controls avoid each other
 PASS Group: Shift-toggle semantics add active part without picking it up
 PASS Group: toggling selected part removes it
@@ -568,7 +590,7 @@ PASS Native placement uses the existing camera pivot actual=(68.3752, -0.9656, 1
 PASS Unfocused native placement leaves the rendered view in place actual=(53.7052, 2.1530, 1.9459) expected=(53.7052, 2.1530, 1.9459)
 PASS Native placement completes and preserves Focused mode
 PASS Native placement uses the placed part pivot actual=(-47.0000, 8.0000, 11.0000) expected=(-47.0000, 8.0000, 11.0000)
-PASS Native drag: the grab point follows the mouse with fixed depth actual=(40.8876, 0.9569, 2.0466) expected=(40.8876, 0.9569, 2.0466)
+PASS Native drag: the grab point follows the mouse with fixed depth actual=(40.8877, 0.9570, 2.0465) expected=(40.8877, 0.9570, 2.0465)
 PASS Native drag: ignores a distant endpoint along the mouse ray
 PASS Native drag: nearby endpoints still snap
 PASS Mirror drag: closer points on the moving mirror and its child cannot steal the fixed attachment
@@ -592,4 +614,4 @@ PASS Native drag: an active edit preserves camera angle and zoom
 PASS Native drag: dropping an existing part keeps the rendered view actual=(17.9238, 4.1071, -0.8296) expected=(17.9238, 4.1071, -0.8296)
 PASS Audit: disabling the plugin detaches all editor hooks
 PASS Audit: reenabling restores editor tools and hidden-part picking
-RESULT 594 passed, 0 failed
+RESULT 616 passed, 0 failed
