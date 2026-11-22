@@ -1,4 +1,4 @@
-# Aviassembly Editor Tools 0.7.12
+# Aviassembly Editor Tools 0.7.13
 
 ## Download and install
 
@@ -34,6 +34,7 @@ Hide and Show All use a matching row above the native toolbar, leaving the game'
 | Uniform scale of editable fuselages | S, then drag or type a multiplier |
 | Exact size, corner roundness, or hollowness | Drag its native shape handle, then type a value |
 | Fine fuselage adjustment | Hold Shift while dragging any shape handle |
+| Snap a fuselage end along its offset arrow | Turn on the magnet, then drag the horizontal, vertical, or length arrow over another part's edge or corner |
 | Precision movement or rotation | Click and drag a native arrow or ring |
 | Set the exact total drag adjustment | Type a number during or just after dragging, then Enter |
 | Move selected placed part | G, then move mouse or type an offset |
@@ -113,6 +114,8 @@ Click the existing fuselage size, width, height, offset, roundness, individual c
 
 Shape handles stay with the fuselage during the preview. Drag along a size or offset handle, or drag vertically when the readout says Drag up/down. Pull the roundness handles inward to round a corner or the whole end. Pull the scale and hollowness handles outward to increase their values.
 
+Horizontal, vertical, and length offset arrows track the grabbed point at different view angles and zoom levels. With the magnet on, hover over an edge or corner of another part to align the center of the edited fuselage end along the arrow's axis. A yellow marker shows the target. Hold Shift for fine adjustment or Ctrl for grid snapping.
+
 At 1080p, dragging 100 pixels changes corner roundness by 38 percentage points or hollowness by 45. Length offset tracks the grabbed point along the fuselage axis at the current zoom and viewing angle. Rotation follows the plane of the clicked ring. Hold Shift to reduce subsequent motion to one tenth. Pressing or releasing Shift during a shape drag keeps the current value. Ctrl snaps dimensions to 0.1 m, percentages to 10 points, and scale to 0.1. Ctrl with Shift uses 0.01 m, 1 percentage point, and 0.01.
 
 Width and height are full dimensions in metres; length and end offsets also use metres, while roundness and hollowness use percentages; for example, type 1.237 for a width of 1.237 m or 33.5 for 33.5% corner roundness
@@ -176,7 +179,7 @@ The runner uses a separate disposable game copy under .work\UnityTestHost, suppr
 
 The standalone Hide Parts worker used a different isolated host; its 60 passing checks are recorded in tests\hide-parts-standalone-results.txt
 
-The combined build passed 559 isolated Unity checks and compiled with zero warnings or errors. The full run is in [runtime-results.txt](tests/runtime-results.txt). The separate camera math suite passed 345 checks.
+The combined build passed 594 isolated Unity checks and compiled with zero warnings or errors. The full run is in [runtime-results.txt](tests/runtime-results.txt). The separate camera math suite passed 345 checks.
 
 Geometry snapping uses visible mesh corners and edges. The magnet remembers Center or Edge for advanced moves. On an axis, Center uses the midpoint of the selected geometry along that axis, and Edge uses the end nearest the hovered target. In a free move, Center uses the middle of the selection in the active part's orientation. Edge uses the starting corner or edge under the cursor, or the nearest source edge if the move started in empty space. Typed amounts take precedence.
 

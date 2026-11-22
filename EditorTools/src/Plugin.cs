@@ -15,7 +15,7 @@ namespace Aviassembly.EditorTools
     public sealed class Plugin : BaseUnityPlugin
     {
         public const string Id = "rylan.aviassembly.editortools";
-        public const string Version = "0.7.12";
+        public const string Version = "0.7.13";
         internal static Plugin Instance;
         private Harmony harmony;
         private ConfigEntry<KeyCode> focusKey;
@@ -355,7 +355,11 @@ namespace Aviassembly.EditorTools
 
         internal void ResizeCompleted(BuildingPart part) { resizedPart = focused ? part : null; }
 
-        private void OnGUI() { Precision?.DrawSnapMarker(); }
+        private void OnGUI()
+        {
+            Precision?.DrawSnapMarker();
+            ShapeEditor?.DrawSnapMarker();
+        }
 
         private void Update()
         {

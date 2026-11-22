@@ -560,6 +560,69 @@ public static class UnityGroupShapeTests
                 ResetInput();
                 check(Vector3.Distance(end.transform.position, handleStart) < 0.0001f, "Shape: cancelling puts the native handles back with the fuselage");
 
+                var stockSnap = PartPlacer.snapMode;
+                PartPlacer.snapMode = false;
+                foreach (int side in new[] { 0, 1 })
+                foreach (bool horizontal in new[] { true, false })
+                foreach (float zoom in new[] { 3f, 8f })
+                {
+                    var activeEnd = side == 0 ? end : nativeGizmos.gizmo2;
+                    end.gameObject.SetActive(side == 0);
+                    nativeGizmos.gizmo2.gameObject.SetActive(side == 1);
+                    var view = (front * (side == 0 ? 1 : -1) + sample.transform.right * 0.32f + sample.transform.up * 0.16f).normalized;
+                    camera.transform.SetPositionAndRotation(sample.transform.position + view * zoom, Quaternion.LookRotation(-view));
+                    nativeGizmos.UpdateGizmos(samplePart, null, sample.AppliedTransform);
+                    activeEnd.transform.localScale = activeEnd.targetScale;
+                    Physics.SyncTransforms();
+                    var handle = (horizontal ? activeEnd.xOffset : activeEnd.yOffset).GetComponentInChildren<Collider>();
+                    Vector2 start = camera.WorldToScreenPoint(handle.bounds.center);
+                    var ray = camera.ScreenPointToRay(start);
+                    if (!handle.Raycast(ray, out var hit, 100)) throw new Exception("Offset fixture missed the native handle");
+                    var grab = activeEnd.transform.InverseTransformPoint(hit.point);
+                    var direction = horizontal ? sample.transform.right : sample.transform.up * Mathf.Sign(sample.transform.localScale.y);
+                    Pointer(start, true);
+                    check(shape.Active && shape.Readout.StartsWith(horizontal ? "Offset X" : "Offset Y"),
+                        "Shape: picks the native " + (horizontal ? "horizontal" : "vertical") + " arrow on end " + (side + 1));
+                    foreach (float movement in new[] { 0.3f, 0.9f, -0.25f })
+                    {
+                        Vector2 mouse = camera.WorldToScreenPoint(hit.point + direction * movement);
+                        Pointer(mouse, true);
+                        Vector2 visible = camera.WorldToScreenPoint(activeEnd.transform.TransformPoint(grab));
+                        check(Vector2.Distance(visible, mouse) < 0.35f,
+                            "Shape: offset arrow tracks " + movement + " m on end " + (side + 1) + " at zoom " + zoom + ", horizontal=" + horizontal);
+                    }
+                    ResetInput();
+                }
+                PartPlacer.snapMode = true;
+                end.gameObject.SetActive(true); nativeGizmos.gizmo2.gameObject.SetActive(false);
+                camera.transform.SetPositionAndRotation(sample.transform.position + front * 6, Quaternion.LookRotation(-front, sample.transform.up));
+                nativeGizmos.UpdateGizmos(samplePart, null, sample.AppliedTransform);
+                end.transform.localScale = end.targetScale;
+                var originalEnd = sample.AppliedTransform.GetBaseOrigin1(sample.transform);
+                var snapTarget = Part("Offset snap target", originalEnd + sample.transform.right * 1.8f + sample.transform.up * 0.8f);
+                snapTarget.transform.rotation = sample.transform.rotation;
+                snapTarget.transform.localScale = Vector3.one * 0.25f;
+                Physics.SyncTransforms();
+                var snapCorner = snapTarget.transform.TransformPoint(new Vector3(0.5f, 0.5f, 0.5f));
+                Vector2 sourceArrow = camera.WorldToScreenPoint(end.xOffset.GetComponentInChildren<Collider>().bounds.center);
+                Vector2 targetCorner = camera.WorldToScreenPoint(snapCorner);
+                Pointer(sourceArrow, true);
+                Pointer(targetCorner, true);
+                var snappedEnd = sample.CurrentTransform.GetBaseOrigin1(sample.transform);
+                float wanted = Vector3.Dot(snapCorner - originalEnd, sample.transform.right);
+                check(shape.Readout.Contains("Snapped") &&
+                    Vector3.Distance(snappedEnd, originalEnd + sample.transform.right * wanted) < 0.0001f,
+                    "Shape: horizontal geometry snap matches the hovered corner on only the edited axis");
+                Pointer(targetCorner, true, fine: true);
+                check(!shape.Readout.Contains("Snapped"), "Shape: Shift disengages geometry snap for fine positioning");
+                Pointer(targetCorner, false);
+                check(Vector3.Distance(sample.AppliedTransform.GetBaseOrigin1(sample.transform), snappedEnd) < 0.0001f,
+                    "Shape: releasing the offset handle commits the snapped end position");
+                ResetInput();
+                placer.partContainer.RemovePart(snapTarget);
+                UnityEngine.Object.DestroyImmediate(snapTarget.gameObject);
+                PartPlacer.snapMode = false;
+
                 nativeGizmos.gizmo2.gameObject.SetActive(true);
                 foreach (int side in new[] { 0, 1 })
                 foreach (var view in new[] { new Vector3(6, 0, 0), new Vector3(3, 2, 5), new Vector3(-9, 4, -7) })
@@ -588,6 +651,7 @@ public static class UnityGroupShapeTests
                     }
                     ResetInput();
                 }
+                PartPlacer.snapMode = stockSnap;
 
                 // The native commit recenters the fuselage pivot. The displayed offset still
                 // refers to the handle's original pivot when the player types after release.

@@ -485,6 +485,41 @@ PASS Shape: releasing Shift during a drag leaves the preview where it is
 PASS Shape: a fast hollowness drag commits at the 90 percent game limit
 PASS Shape: the actual end handles track an offset preview
 PASS Shape: cancelling puts the native handles back with the fuselage
+PASS Shape: picks the native horizontal arrow on end 1
+PASS Shape: offset arrow tracks 0.3 m on end 1 at zoom 3, horizontal=True
+PASS Shape: offset arrow tracks 0.9 m on end 1 at zoom 3, horizontal=True
+PASS Shape: offset arrow tracks -0.25 m on end 1 at zoom 3, horizontal=True
+PASS Shape: picks the native horizontal arrow on end 1
+PASS Shape: offset arrow tracks 0.3 m on end 1 at zoom 8, horizontal=True
+PASS Shape: offset arrow tracks 0.9 m on end 1 at zoom 8, horizontal=True
+PASS Shape: offset arrow tracks -0.25 m on end 1 at zoom 8, horizontal=True
+PASS Shape: picks the native vertical arrow on end 1
+PASS Shape: offset arrow tracks 0.3 m on end 1 at zoom 3, horizontal=False
+PASS Shape: offset arrow tracks 0.9 m on end 1 at zoom 3, horizontal=False
+PASS Shape: offset arrow tracks -0.25 m on end 1 at zoom 3, horizontal=False
+PASS Shape: picks the native vertical arrow on end 1
+PASS Shape: offset arrow tracks 0.3 m on end 1 at zoom 8, horizontal=False
+PASS Shape: offset arrow tracks 0.9 m on end 1 at zoom 8, horizontal=False
+PASS Shape: offset arrow tracks -0.25 m on end 1 at zoom 8, horizontal=False
+PASS Shape: picks the native horizontal arrow on end 2
+PASS Shape: offset arrow tracks 0.3 m on end 2 at zoom 3, horizontal=True
+PASS Shape: offset arrow tracks 0.9 m on end 2 at zoom 3, horizontal=True
+PASS Shape: offset arrow tracks -0.25 m on end 2 at zoom 3, horizontal=True
+PASS Shape: picks the native horizontal arrow on end 2
+PASS Shape: offset arrow tracks 0.3 m on end 2 at zoom 8, horizontal=True
+PASS Shape: offset arrow tracks 0.9 m on end 2 at zoom 8, horizontal=True
+PASS Shape: offset arrow tracks -0.25 m on end 2 at zoom 8, horizontal=True
+PASS Shape: picks the native vertical arrow on end 2
+PASS Shape: offset arrow tracks 0.3 m on end 2 at zoom 3, horizontal=False
+PASS Shape: offset arrow tracks 0.9 m on end 2 at zoom 3, horizontal=False
+PASS Shape: offset arrow tracks -0.25 m on end 2 at zoom 3, horizontal=False
+PASS Shape: picks the native vertical arrow on end 2
+PASS Shape: offset arrow tracks 0.3 m on end 2 at zoom 8, horizontal=False
+PASS Shape: offset arrow tracks 0.9 m on end 2 at zoom 8, horizontal=False
+PASS Shape: offset arrow tracks -0.25 m on end 2 at zoom 8, horizontal=False
+PASS Shape: horizontal geometry snap matches the hovered corner on only the edited axis
+PASS Shape: Shift disengages geometry snap for fine positioning
+PASS Shape: releasing the offset handle commits the snapped end position
 PASS Shape: pointer picks the native length handle on end 1 from (6.00, 0.00, 0.00)
 PASS Shape: grabbed length handle follows pointer within a pixel on end 1 at 0.25 m from (6.00, 0.00, 0.00)
 PASS Shape: grabbed length handle follows pointer within a pixel on end 1 at 0.85 m from (6.00, 0.00, 0.00)
@@ -529,11 +564,11 @@ PASS Audit: same numeric offset on end 2 preserves the saved group and budget fo
 PASS Audit: same numeric offset on end 2 preserves the saved group and budget for OffsetY
 PASS Audit: same numeric offset on end 2 preserves the saved group and budget for Length
 PASS Native placement completes and preserves Unfocused mode
-PASS Native placement uses the existing camera pivot actual=(67.1727, -0.9656, 1.6899) expected=(67.1727, -0.9656, 1.6899)
-PASS Unfocused native placement leaves the rendered view in place actual=(52.5027, 2.1530, 1.9459) expected=(52.5027, 2.1530, 1.9459)
+PASS Native placement uses the existing camera pivot actual=(68.3752, -0.9656, 1.6899) expected=(68.3752, -0.9656, 1.6899)
+PASS Unfocused native placement leaves the rendered view in place actual=(53.7052, 2.1530, 1.9459) expected=(53.7052, 2.1530, 1.9459)
 PASS Native placement completes and preserves Focused mode
 PASS Native placement uses the placed part pivot actual=(-47.0000, 8.0000, 11.0000) expected=(-47.0000, 8.0000, 11.0000)
-PASS Native drag: the grab point follows the mouse with fixed depth actual=(40.1584, 0.9569, 2.0466) expected=(40.1584, 0.9569, 2.0466)
+PASS Native drag: the grab point follows the mouse with fixed depth actual=(40.8876, 0.9569, 2.0466) expected=(40.8876, 0.9569, 2.0466)
 PASS Native drag: ignores a distant endpoint along the mouse ray
 PASS Native drag: nearby endpoints still snap
 PASS Mirror drag: closer points on the moving mirror and its child cannot steal the fixed attachment
@@ -541,10 +576,10 @@ PASS Mirror drag: the reflected copy accepts a fixed attachment while excluding 
 PASS Mirror drag: the reflected cursor ray reaches a fixed surface behind a moving child
 PASS Mirror drag: a moving child alone cannot become the reflected part's parent
 PASS Mirror drag: picking up a centerline part cannot claim a nearby placed part as its reflection
-PASS Native drag: rendered view stays put in Unfocused mode actual=(31.4369, 3.3695, 0.2181) expected=(31.4369, 3.3695, 0.2181)
+PASS Native drag: rendered view stays put in Unfocused mode actual=(32.1661, 3.3695, 0.2181) expected=(32.1661, 3.3695, 0.2181)
 PASS Native drag: an active edit preserves camera angle and zoom
-PASS Native drag: dropping an existing part keeps the rendered view actual=(31.4369, 3.3695, 0.2181) expected=(31.4369, 3.3695, 0.2181)
-PASS Native drag: the grab point follows the mouse with fixed depth actual=(26.2031, 1.6946, 0.9988) expected=(26.2031, 1.6946, 0.9988)
+PASS Native drag: dropping an existing part keeps the rendered view actual=(32.1661, 3.3695, 0.2181) expected=(32.1661, 3.3695, 0.2181)
+PASS Native drag: the grab point follows the mouse with fixed depth actual=(26.6453, 1.6946, 0.9988) expected=(26.6453, 1.6946, 0.9988)
 PASS Native drag: ignores a distant endpoint along the mouse ray
 PASS Native drag: nearby endpoints still snap
 PASS Mirror drag: closer points on the moving mirror and its child cannot steal the fixed attachment
@@ -552,9 +587,9 @@ PASS Mirror drag: the reflected copy accepts a fixed attachment while excluding 
 PASS Mirror drag: the reflected cursor ray reaches a fixed surface behind a moving child
 PASS Mirror drag: a moving child alone cannot become the reflected part's parent
 PASS Mirror drag: picking up a centerline part cannot claim a nearby placed part as its reflection
-PASS Native drag: rendered view stays put in Focused mode actual=(17.4816, 4.1071, -0.8296) expected=(17.4816, 4.1071, -0.8296)
+PASS Native drag: rendered view stays put in Focused mode actual=(17.9238, 4.1071, -0.8296) expected=(17.9238, 4.1071, -0.8296)
 PASS Native drag: an active edit preserves camera angle and zoom
-PASS Native drag: dropping an existing part keeps the rendered view actual=(17.4816, 4.1071, -0.8296) expected=(17.4816, 4.1071, -0.8296)
+PASS Native drag: dropping an existing part keeps the rendered view actual=(17.9238, 4.1071, -0.8296) expected=(17.9238, 4.1071, -0.8296)
 PASS Audit: disabling the plugin detaches all editor hooks
 PASS Audit: reenabling restores editor tools and hidden-part picking
-RESULT 559 passed, 0 failed
+RESULT 594 passed, 0 failed

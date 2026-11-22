@@ -13,9 +13,7 @@ namespace Aviassembly.EditorTools
             hit = default;
             // The mod reports PointerIsOverUI to the game throughout a drag to suppress native clicks.
             // Ask the native hit test about actual panels before picking the mesh underneath.
-            if (geometry == null || (mouse - startMouse).sqrMagnitude < 9 || host.PointerOverPanel() ||
-                host.PointerOverToolUI() || host.PointerOverClearanceUI() ||
-                (UnityEngine.EventSystems.EventSystem.current != null && MouseInput.Instance?.GetPointerIsOverUI(null) == true)) return false;
+            if (geometry == null || (mouse - startMouse).sqrMagnitude < 9 || geometry.PointerOverUI(host)) return false;
             snapHit = geometry.Pick(mouse, true);
             if (!snapHit.HasValue) return false;
             hit = snapHit.Value;
@@ -51,20 +49,7 @@ namespace Aviassembly.EditorTools
 
         internal void DrawSnapMarker()
         {
-            if (snapHit.HasValue && Event.current.type == EventType.Repaint) DrawPoint(snapHit.Value, Color.yellow, 11);
-        }
-
-        private void DrawPoint(Vector3 world, Color color, float size)
-        {
-            var point = ProjectionCamera.WorldToScreenPoint(world);
-            if (point.z <= 0) return;
-            var previous = GUI.color;
-            GUI.color = Color.black;
-            var rect = new Rect(point.x - size / 2, Screen.height - point.y - size / 2, size, size);
-            GUI.DrawTexture(rect, Texture2D.whiteTexture);
-            GUI.color = color;
-            GUI.DrawTexture(new Rect(rect.x + 2, rect.y + 2, size - 4, size - 4), Texture2D.whiteTexture);
-            GUI.color = previous;
+            if (snapHit.HasValue) GeometrySnap.DrawMarker(ProjectionCamera, snapHit.Value);
         }
     }
 
@@ -93,12 +78,17 @@ namespace Aviassembly.EditorTools
         private Vector2 extent;
 
         internal GeometrySnap(Camera camera, TransformSession session, Plugin host)
+            : this(camera, host, session.Moves, session.IsGroup ? host.Selection.Parts : new[] { session.Target }, session.Target)
+        {
+        }
+
+        internal GeometrySnap(Camera camera, Plugin host, System.Func<BuildingPart, bool> moves,
+            BuildingPart[] selection = null, BuildingPart extraRoot = null)
         {
             this.camera = camera;
             if (camera == null) return;
             radius = Mathf.Clamp(camera.pixelHeight / 80f, 8f, 20f);
             var seen = new HashSet<MeshFilter>();
-            var selection = session.IsGroup ? host.Selection.Parts : new[] { session.Target };
             void Collect(Component root)
             {
                 if (root == null) return;
@@ -112,16 +102,32 @@ namespace Aviassembly.EditorTools
                     var mesh = filter.sharedMesh;
                     if (mesh == null || !mesh.isReadable) continue;
                     var surface = new Surface { mesh = mesh, bounds = renderer.bounds, matrix = filter.transform.localToWorldMatrix,
-                        moves = session.Moves(part) };
+                        moves = moves(part) };
                     if (!surface.moves && !part.hasBeenPlaced) continue;
-                    foreach (var selected in selection)
-                        if (part == selected) { surface.source = true; break; }
+                    surface.source = selection != null && System.Array.IndexOf(selection, part) >= 0;
                     surface.screenBounds = ScreenBounds(surface.bounds);
                     surfaces.Add(surface);
                 }
             }
             Collect(PlaneContainer.Instance);
-            Collect(session.Target);
+            Collect(extraRoot);
+        }
+
+        internal bool PointerOverUI(Plugin host) => host.PointerOverPanel() || host.PointerOverToolUI() || host.PointerOverClearanceUI() ||
+            (UnityEngine.EventSystems.EventSystem.current != null && MouseInput.Instance?.GetPointerIsOverUI(null) == true);
+
+        internal static void DrawMarker(Camera camera, Vector3 world)
+        {
+            if (camera == null || Event.current.type != EventType.Repaint) return;
+            var point = camera.WorldToScreenPoint(world);
+            if (point.z <= 0) return;
+            var previous = GUI.color;
+            GUI.color = Color.black;
+            var rect = new Rect(point.x - 5.5f, Screen.height - point.y - 5.5f, 11, 11);
+            GUI.DrawTexture(rect, Texture2D.whiteTexture);
+            GUI.color = Color.yellow;
+            GUI.DrawTexture(new Rect(rect.x + 2, rect.y + 2, 7, 7), Texture2D.whiteTexture);
+            GUI.color = previous;
         }
 
         private Rect ScreenBounds(Bounds bounds)

@@ -42,8 +42,11 @@ namespace Aviassembly.EditorTools
         private Vector2 dragDirection = Vector2.right;
         private float unitsPerPixel = 0.005f;
         private bool endOnDrag;
-        private Camera lengthCamera;
-        private Vector3 lengthGrabPoint, lengthAxis;
+        private Camera offsetCamera;
+        private Vector3 offsetGrabPoint, offsetAxis, offsetCenter;
+        private Vector2 offsetStartMouse;
+        private GeometrySnap offsetSnap;
+        private Vector3? offsetSnapHit;
         private float initialValue, previewValue, minimum, maximum;
         private float dragValue, dragMinimum, dragMaximum;
         private ShapeField recentField;
@@ -117,21 +120,40 @@ namespace Aviassembly.EditorTools
         private void UpdateDrag(Vector2 mouse, bool fine, bool snap)
         {
             var motion = mouse - lastMouse;
-            float delta = lengthCamera != null
-                ? DragProjection.AxisDisplacement(lengthCamera, lengthGrabPoint + lengthAxis * (dragValue - initialValue),
-                    lengthAxis, motion, 0.02f, out endOnDrag)
+            float delta = offsetCamera != null
+                ? DragProjection.AxisDisplacement(offsetCamera, offsetGrabPoint + offsetAxis * (dragValue - initialValue),
+                    offsetAxis, motion, 0.02f, out endOnDrag)
                 : Vector2.Dot(motion, dragDirection) * unitsPerPixel;
             lastMouse = mouse;
             // Accumulate only new motion so pressing Shift never rescales the drag so far.
             if (delta != 0 && dragMinimum <= dragMaximum)
                 dragValue = Mathf.Clamp(dragValue + delta * (fine ? FineSensitivity : 1f), dragMinimum, dragMaximum);
             float number = dragValue;
+            offsetSnapHit = null;
             if (number != initialValue && snap && dragMinimum <= dragMaximum)
             {
                 float step = Percent(field) ? (fine ? 1 : 10) : (fine ? 0.01f : 0.1f);
                 number = Mathf.Clamp(TransformMath.Snap(number, step), dragMinimum, dragMaximum);
             }
+            else if (!snap && !fine && offsetSnap != null && (mouse - offsetStartMouse).sqrMagnitude >= 9 &&
+                PartPlacer.snapMode && !offsetSnap.PointerOverUI(host))
+            {
+                var hit = offsetSnap.Pick(mouse, true);
+                if (hit.HasValue)
+                {
+                    float aligned = initialValue + Vector3.Dot(hit.Value - offsetCenter, offsetAxis);
+                    if (aligned >= dragMinimum && aligned <= dragMaximum)
+                    {
+                        number = aligned;
+                        offsetSnapHit = hit;
+                    }
+                }
+            }
             Preview(number, true);
+        }
+        internal void DrawSnapMarker()
+        {
+            if (Active && !numeric && offsetSnapHit.HasValue) GeometrySnap.DrawMarker(offsetCamera, offsetSnapHit.Value);
         }
         internal void Type(char c)
         {
@@ -187,11 +209,17 @@ namespace Aviassembly.EditorTools
         private void ConfigureHandleDrag(Component handle, Vector3 hit, Vector3 center)
         {
             var camera = BuildingCamera.cam;
-            if (field == ShapeField.Length)
+            if (field == ShapeField.Length || field == ShapeField.OffsetX || field == ShapeField.OffsetY)
             {
-                lengthCamera = camera;
-                lengthGrabPoint = hit;
-                lengthAxis = side == 0 ? target.transform.forward : -target.transform.forward;
+                offsetCamera = camera;
+                offsetGrabPoint = hit;
+                offsetCenter = center;
+                offsetStartMouse = lastMouse;
+                var transform = target.transform;
+                if (field == ShapeField.OffsetX) offsetAxis = transform.right;
+                else if (field == ShapeField.OffsetY) offsetAxis = transform.up * Mathf.Sign(transform.localScale.y);
+                else offsetAxis = side == 0 ? transform.forward : -transform.forward;
+                if (PartPlacer.snapMode) offsetSnap = new GeometrySnap(camera, host, snapshot.Contains);
                 return;
             }
             if (handle is ProceduralScaleGizmos)
@@ -259,7 +287,7 @@ namespace Aviassembly.EditorTools
             dragValue = initialValue;
             previewValue = initialValue; previewFromMouse = true;
             lastMouse = Mouse.current != null ? Mouse.current.position.ReadValue() : Vector2.zero;
-            lengthCamera = null;
+            offsetCamera = null;
             dragDirection = Vector2.right; unitsPerPixel = Percent(field) ? PercentPerPixel(field) : 0.01f; endOnDrag = false;
             if (kind == ShapeField.Scale && BuildingCamera.cam != null) SetRadialDrag(BuildingCamera.cam, pivot);
             typed = ""; numeric = false; mouseDrag = drag; beginFrame = Time.frameCount; recentTarget = null;
@@ -460,7 +488,8 @@ namespace Aviassembly.EditorTools
                 if (!Mathf.Approximately(low, high)) amount += " to " + Display(high * MaxRoundness);
             }
             return Name(field) + (field == ShapeField.Scale ? "" : " (End " + (side + 1) + ")") +
-                (IsScale(field) ? " \u00d7 " : " = ") + amount + Units(field) + (endOnDrag && !numeric ? " | Drag up/down" : "");
+                (IsScale(field) ? " \u00d7 " : " = ") + amount + Units(field) +
+                (offsetSnapHit.HasValue && !numeric ? " | Snapped" : endOnDrag && !numeric ? " | Drag up/down" : "");
         }
         private static string Display(float v) => v.ToString("0.######", CultureInfo.InvariantCulture);
         private static string Units(ShapeField f) => Percent(f) ? "%" : IsScale(f) ? "" : " m";
@@ -558,7 +587,11 @@ namespace Aviassembly.EditorTools
             if (gizmos.gizmo1.gameObject.activeInHierarchy || gizmos.gizmo2.gameObject.activeInHierarchy)
                 gizmos.UpdateGizmos(target, (Transform)NativeSnapPoint.GetValue(manager), f.CurrentTransform);
         }
-        private void End() { Active = false; consumed = Time.frameCount; queued = ""; mouseDrag = false; snapshot = null; lengthCamera = null; }
+        private void End()
+        {
+            Active = false; consumed = Time.frameCount; queued = ""; mouseDrag = false; snapshot = null;
+            offsetCamera = null; offsetSnap = null; offsetSnapHit = null;
+        }
         private void ReleaseBlocker()
         { if (blocker == null) return; if (InputManager.Instance != null && InputManager.Instance.currentInputBlocker == blocker) InputManager.Instance.currentInputBlocker = null; UnityEngine.Object.Destroy(blocker.gameObject); blocker = null; }
         public void Dispose() { Cancel(); ReleaseBlocker(); if (keyboard != null) keyboard.onTextInput -= OnText; }

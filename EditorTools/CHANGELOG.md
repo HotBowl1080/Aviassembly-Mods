@@ -1,5 +1,11 @@
 # Editor Tools changelog
 
+## 0.7.13
+
+- Fixed horizontal fuselage offset sensitivity. The horizontal and vertical offset arrows now track the grabbed point in perspective, matching the length arrow.
+- Added geometry snapping to all three fuselage offset arrows. Turn on the magnet and drag over another part's edge or corner. The edited fuselage end's center aligns only along the dragged axis, and a yellow marker identifies the target. Shift switches to fine adjustment, and Ctrl selects grid snapping.
+- Passed 594 automated Unity checks, including both ends at different zoom levels, snapping to a corner, and committing the snapped position.
+
 ## 0.7.12
 
 Rotation snapping defaults to **1°**. Click the rotation angle button to cycle through **1°, 5°, 15°, 30°, 45°, 60°, 75°, 90°, and Free**. The selected increment applies to mouse rotation with R, axis constraints, trackball, and dragged rotation rings. Typed angles stay exact. Shift still slows mouse motion, and Ctrl still snaps movement to the grid.
